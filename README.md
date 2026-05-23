@@ -1,19 +1,20 @@
 ﻿# Proxmox FQDN Exporter
 
-A .NET 9.0 application for exporting Fully Qualified Domain Names (FQDNs) and IP addresses of Proxmox containers and virtual machines. The exporter can update a custom FQDN list for Pi-hole and supports flexible export options.
+A .NET application for exporting Fully Qualified Domain Names (FQDNs) and IP addresses of Proxmox containers and virtual machines. The exporter can publish DNS records to Technitium DNS, update a custom FQDN list for Pi-hole, and supports flexible export options.
 
 ## Features
 - Fetches FQDN and IP addresses from Proxmox containers and VMs
-- Exports host lists to console and/or Pi-hole
+- Exports host lists to console, Technitium DNS, and/or Pi-hole
 - Supports custom subnet filtering
-- Designed for automation and integration with Pi-hole
+- Designed for automation and integration with authoritative DNS providers
 - Configurable via `config.json`
 - **AOT (Ahead-Of-Time) compilation to native executable for direct deployment on Proxmox host**
 
 ## Requirements
-- .NET 9.0 SDK
+- .NET SDK matching the project target framework
 - Proxmox host with access to `pct` and `qm` commands
-- (Optional) Pi-hole instance for DNS list updates
+- (Optional) Technitium DNS primary node for zone updates
+- (Optional) Pi-hole instance for legacy DNS list updates
 
 ## Native Executable (AOT)
 This project uses .NET's AOT (Ahead-Of-Time) compilation to produce a native executable. This allows the exporter to run directly on the Proxmox host without requiring a .NET runtime. The deployment scripts and Dockerfile are set up to build and publish a self-contained, native binary for your target platform.
@@ -23,9 +24,21 @@ Edit the `config.json` file in the root of the project:
 
 ```json
 {
-  "SubnetFilter": "192.168.0.0/24",
+  "SubnetsFilter": ["10.0.0.0/8"],
+  "FqdnRetentionMinutes": 300,
   "Export": {
     "Console": true,
+    "Dns": {
+      "Technitium": {
+        "BaseUrl": "http://ely-dns-01.elylan:5380",
+        "ApiToken": "technitium-api-token",
+        "Zone": "elylan",
+        "PrimaryNode": "ely-dns-01.elylan",
+        "RecordTtlSeconds": 300,
+        "RecordExpirySeconds": 18000,
+        "CreatePtr": false
+      }
+    },
     "Pihole": {
       "Id": 104,
       "ListFilePath": "/etc/pihole/hosts/custom.list",
@@ -36,9 +49,15 @@ Edit the `config.json` file in the root of the project:
 }
 ```
 
-- `SubnetFilter`: CIDR notation for filtering network interfaces
+- `SubnetsFilter`: CIDR notation for filtering network interfaces
+- `FqdnRetentionMinutes`: how long records stay in the local retention database after they disappear from Proxmox
 - `Export.Console`: Output host list to console
+- `Export.Dns.Technitium`: Technitium DNS export settings
 - `Export.Pihole`: Pi-hole export settings
+
+Technitium export writes A records only to the configured primary node. In a clustered or primary/secondary DNS setup, replication is left to Technitium.
+
+The Technitium provider uses `/api/zones/records/add` with overwrite enabled. When `RecordExpirySeconds` is configured, records that stop being refreshed are automatically removed by Technitium after the expiry window.
 
 ## Usage
 

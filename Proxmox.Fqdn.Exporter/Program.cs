@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
+using Proxmox.Fqdn.Exporter.Abstractions.Interfaces.Services;
 using Proxmox.Fqdn.Exporter.Adapters;
 using Proxmox.Fqdn.Exporter.Adapters.Proxmox;
 using Proxmox.Fqdn.Exporter.Data;
@@ -39,7 +40,9 @@ builder.Services.AddSingleton<ProcessAdapter>();
 
 builder.Services.AddSingleton<ConfigService>();
 builder.Services.AddSingleton<FqdnService>();
-builder.Services.AddSingleton<PiholeService>();
+builder.Services.AddSingleton<HttpClient>();
+builder.Services.AddSingleton<IDnsProvider, PiholeService>();
+builder.Services.AddSingleton<IDnsProvider, TechnitiumDnsService>();
 builder.Services.AddSingleton<WorkflowService>();
 
 builder.Services.AddSingleton<ContainerProxmoxAdapter>();

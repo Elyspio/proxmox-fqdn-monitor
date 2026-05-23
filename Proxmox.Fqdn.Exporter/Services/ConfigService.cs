@@ -27,8 +27,38 @@ public class ConfigService
 		{
 			case null:
 				throw new ArgumentException("Export configuration is required.");
-			case { Console: false, Pihole: null }:
-				throw new ArgumentException("Atleast one export method must be enabled: Console or Pihole.");
+			case { Console: false, Pihole: null, Dns.Technitium: null }:
+				throw new ArgumentException("At least one export method must be enabled: Console, Pihole, or Dns.Technitium.");
+		}
+
+		VerifyTechnitium(config.Export.Dns?.Technitium);
+	}
+
+	private static void VerifyTechnitium(Technitium? config)
+	{
+		if (config is null)
+		{
+			return;
+		}
+
+		if (string.IsNullOrWhiteSpace(config.BaseUrl))
+		{
+			throw new ArgumentException("Export:Dns:Technitium:BaseUrl is required.");
+		}
+
+		if (string.IsNullOrWhiteSpace(config.ApiToken))
+		{
+			throw new ArgumentException("Export:Dns:Technitium:ApiToken is required.");
+		}
+
+		if (string.IsNullOrWhiteSpace(config.Zone))
+		{
+			throw new ArgumentException("Export:Dns:Technitium:Zone is required.");
+		}
+
+		if (config.RecordTtlSeconds < 1)
+		{
+			throw new ArgumentException("Export:Dns:Technitium:RecordTtlSeconds must be greater than zero.");
 		}
 	}
 }

@@ -76,7 +76,7 @@ public class FqdnRepository : IDisposable
         
         command.CommandText = "DELETE FROM Fqdn WHERE UpdatedAt < $threshold";
 
-        command.Parameters.AddWithValue("$threshold", thresholdDate.ToString("yyyy-MM-dd HH:mm:ss"));
+        command.Parameters.AddWithValue("threshold", thresholdDate.ToString("yyyy-MM-dd HH:mm:ss"));
 
         var nbDeleted  = await command.ExecuteNonQueryAsync(); // Retourne le nombre de lignes supprimées
         
@@ -119,5 +119,27 @@ public class FqdnRepository : IDisposable
     {
         _connection?.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    public async Task DeleteAllByIps(string[] ips)
+    {
+        _logger.LogDebug("{Method} FQDN entries with ips: {ips}", nameof(DeleteAllByIps), string.Join(", ", ips));
+        
+        await using var command = _connection.CreateCommand();
+        
+        // Construction dynamique de la requête avec autant de paramètres que de hostnames
+        var parameters = string.Join(", ", ips.Select((_, i) => $"$host{i}"));
+        command.CommandText = $"DELETE FROM Fqdn WHERE Ip  IN ({parameters})";
+
+        
+        
+        for (var i = 0; i < ips.Length; i++)
+        {
+            command.Parameters.AddWithValue($"host{i}", ips[i]);
+        }
+
+        var nbDeleted  = await command.ExecuteNonQueryAsync(); // Retourne le nombre de lignes supprimées
+        
+        _logger.LogDebug("{Method} {NbDeleted} FQDN entries", nameof(DeleteAllByIps), nbDeleted);
     }
 }
