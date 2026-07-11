@@ -4,3 +4,4 @@ obj
 Deployment/build/out
 *.user
 Proxmox.Fqdn.Exporter.Tests/fqdn.db
+config.secrets.json

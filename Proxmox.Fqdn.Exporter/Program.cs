@@ -29,7 +29,10 @@ builder.Services.AddSerilog();
 
 builder.Logging.AddSystemdConsole().SetMinimumLevel(LogLevel.Debug);
 
-builder.Configuration.AddJsonFile("config.json", false, true).AddEnvironmentVariables();
+builder.Configuration
+	.AddJsonFile("config.json", false, true)
+	.AddJsonFile("config.secrets.json", true, true)
+	.AddEnvironmentVariables();
 
 
 builder.Services.Configure<AppConfig>(builder.Configuration);
