@@ -15,6 +15,9 @@ public sealed record DiscoveredHost
 	/// <summary>Null when the guest reported no address inside the configured subnets.</summary>
 	public string? Ip { get; init; }
 
+	/// <summary>VLAN tag of the NIC carrying <see cref="Ip" />, or null when untagged or unknown.</summary>
+	public int? Vlan { get; init; }
+
 	/// <summary>Set when <see cref="Ip" /> is null, explaining why.</summary>
 	public string? Issue { get; init; }
 }

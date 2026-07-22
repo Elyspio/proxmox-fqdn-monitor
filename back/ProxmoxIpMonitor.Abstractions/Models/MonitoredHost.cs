@@ -40,6 +40,12 @@ public sealed record MonitoredHost
 	/// <summary>First IPv4 matching the configured subnet filter, or null when none was found.</summary>
 	public string? Ip { get; init; }
 
+	/// <summary>
+	///     VLAN tag of the NIC carrying <see cref="Ip" />, read from the guest's Proxmox NIC config.
+	///     Null for the hypervisor, for an untagged (native VLAN) NIC, or when it could not be read.
+	/// </summary>
+	public int? Vlan { get; init; }
+
 	public required DateTime FirstSeenAt { get; init; }
 
 	/// <summary>Last collection that saw this host with an IP. Drives retention expiry.</summary>

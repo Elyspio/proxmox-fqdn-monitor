@@ -13,7 +13,7 @@ public class SnapshotDifferTests
 
 	private static readonly Dictionary<string, string> NodeNames = new() { [NodeId] = "proxmox" };
 
-	private static MonitoredHost Stored(string hostname, string? ip, int vmId, DateTime lastSeen, bool present = true, bool pinned = false)
+	private static MonitoredHost Stored(string hostname, string? ip, int vmId, DateTime lastSeen, bool present = true, bool pinned = false, int? vlan = null)
 	{
 		return new MonitoredHost
 		{
@@ -24,6 +24,7 @@ public class SnapshotDifferTests
 			VmId = vmId,
 			Hostname = hostname,
 			Ip = ip,
+			Vlan = vlan,
 			FirstSeenAt = lastSeen,
 			LastSeenAt = lastSeen,
 			Present = present,
@@ -45,9 +46,9 @@ public class SnapshotDifferTests
 			Now);
 	}
 
-	private static DiscoveredHost Found(string hostname, string? ip, int vmId, string? issue = null)
+	private static DiscoveredHost Found(string hostname, string? ip, int vmId, string? issue = null, int? vlan = null)
 	{
-		return new DiscoveredHost { Type = HostType.Container, VmId = vmId, Hostname = hostname, Ip = ip, Issue = issue };
+		return new DiscoveredHost { Type = HostType.Container, VmId = vmId, Hostname = hostname, Ip = ip, Vlan = vlan, Issue = issue };
 	}
 
 	[Fact]
@@ -150,6 +151,29 @@ public class SnapshotDifferTests
 		Assert.Equal("10.0.10.5", host.Ip);
 		Assert.False(host.Present);
 		Assert.Equal(IpEventKind.Disappeared, Assert.Single(result.Events).Kind);
+	}
+
+	[Fact]
+	public void DiscoveredVlanIsRecordedAndReplacesTheStoredOne()
+	{
+		var stored = Stored("web-01", "10.0.10.5", 101, Now.AddMinutes(-5), vlan: 10);
+
+		var result = Diff([stored], [Found("web-01", "10.0.10.5", 101, vlan: 30)]);
+
+		Assert.Equal(30, Assert.Single(result.Upserts).Vlan);
+	}
+
+	[Fact]
+	public void VlanIsRetainedWhenAHostStopsReporting()
+	{
+		// The VLAN belongs to the retained address; a rebooting guest must not lose it.
+		var stored = Stored("web-01", "10.0.10.5", 101, Now.AddMinutes(-10), vlan: 30);
+
+		var result = Diff([stored], []);
+
+		var kept = Assert.Single(result.Upserts);
+		Assert.Equal("10.0.10.5", kept.Ip);
+		Assert.Equal(30, kept.Vlan);
 	}
 
 	[Fact]

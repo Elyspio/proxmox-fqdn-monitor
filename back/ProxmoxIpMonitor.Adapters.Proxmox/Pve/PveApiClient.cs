@@ -73,10 +73,10 @@ public sealed class PveApiClient(
 		using var gate = new SemaphoreSlim(8);
 
 		var vmTasks = vms.Data.Select(guest => ResolveAsync(guest, HostType.Vm,
-			() => GetVmIpAsync(client, auth, node, guest.VmId, subnets, ct), gate, ct));
+			() => GetVmNetworkAsync(client, auth, node, guest.VmId, subnets, ct), gate, ct));
 
 		var containerTasks = containers.Data.Select(guest => ResolveAsync(guest, HostType.Container,
-			() => GetContainerIpAsync(client, auth, node, guest.VmId, subnets, ct), gate, ct));
+			() => GetContainerNetworkAsync(client, auth, node, guest.VmId, subnets, ct), gate, ct));
 
 		hosts.AddRange(await Task.WhenAll(vmTasks.Concat(containerTasks)));
 
@@ -123,20 +123,20 @@ public sealed class PveApiClient(
 		}
 	}
 
-	private async Task<DiscoveredHost> ResolveAsync(PveGuest guest, HostType type, Func<Task<Result<string>>> resolve, SemaphoreSlim gate, CancellationToken ct)
+	private async Task<DiscoveredHost> ResolveAsync(PveGuest guest, HostType type, Func<Task<Result<GuestNetwork>>> resolve, SemaphoreSlim gate, CancellationToken ct)
 	{
 		await gate.WaitAsync(ct);
 		try
 		{
 			var name = string.IsNullOrWhiteSpace(guest.Name) ? $"{type.ToString().ToLowerInvariant()}-{guest.VmId}" : guest.Name;
-			var ip = await resolve();
+			var net = await resolve();
 
-			if (ip.Success && ip.Data.Length > 0)
-				return new DiscoveredHost { Type = type, VmId = guest.VmId, Hostname = name, Ip = ip.Data };
+			if (net.Success && net.Data.Ip is { Length: > 0 })
+				return new DiscoveredHost { Type = type, VmId = guest.VmId, Hostname = name, Ip = net.Data.Ip, Vlan = net.Data.Vlan };
 
-			var issue = ip.Success
+			var issue = net.Success
 				? "No IPv4 address inside the configured subnets"
-				: ip.Error.Message;
+				: net.Error.Message;
 
 			logger.LogDebug("No usable address for {Type} {VmId} ({Name}): {Issue}", type, guest.VmId, name, issue);
 
@@ -182,7 +182,7 @@ public sealed class PveApiClient(
 		}
 	}
 
-	private async Task<Result<string>> GetVmIpAsync(HttpClient client, AuthenticationHeaderValue auth, PveNode node, int vmId, IReadOnlyList<string> subnets, CancellationToken ct)
+	private async Task<Result<GuestNetwork>> GetVmNetworkAsync(HttpClient client, AuthenticationHeaderValue auth, PveNode node, int vmId, IReadOnlyList<string> subnets, CancellationToken ct)
 	{
 		try
 		{
@@ -190,13 +190,16 @@ public sealed class PveApiClient(
 			var payload = await GetAsync<PveAgentInterfaces>(client, auth,
 				$"api2/json/nodes/{Uri.EscapeDataString(node.NodeName)}/qemu/{vmId}/agent/network-get-interfaces", ct);
 
-			var address = payload?.Result?
-				.SelectMany(i => i.IpAddresses ?? [])
-				.Where(a => string.Equals(a.IpAddressType, "ipv4", StringComparison.OrdinalIgnoreCase))
-				.Select(a => a.IpAddress)
-				.FirstOrDefault(ip => ip is not null && SubnetFilter.IsInAny(subnets, ip));
+			// Keep each address tied to its interface so its MAC can pick the VLAN out of the config.
+			var match = payload?.Result?
+				.SelectMany(iface => (iface.IpAddresses ?? []).Select(addr => (iface.HardwareAddress, addr.IpAddress, addr.IpAddressType)))
+				.Where(x => string.Equals(x.IpAddressType, "ipv4", StringComparison.OrdinalIgnoreCase))
+				.FirstOrDefault(x => x.IpAddress is not null && SubnetFilter.IsInAny(subnets, x.IpAddress));
 
-			return address ?? "";
+			if (match?.IpAddress is null) return new GuestNetwork(null, null);
+
+			var vlan = await GetVlanAsync(client, auth, node, "qemu", vmId, match.Value.HardwareAddress, ct);
+			return new GuestNetwork(match.Value.IpAddress, vlan);
 		}
 		catch (HttpRequestException e) when (e.StatusCode is HttpStatusCode.InternalServerError or HttpStatusCode.BadRequest)
 		{
@@ -209,22 +212,52 @@ public sealed class PveApiClient(
 		}
 	}
 
-	private async Task<Result<string>> GetContainerIpAsync(HttpClient client, AuthenticationHeaderValue auth, PveNode node, int vmId, IReadOnlyList<string> subnets, CancellationToken ct)
+	private async Task<Result<GuestNetwork>> GetContainerNetworkAsync(HttpClient client, AuthenticationHeaderValue auth, PveNode node, int vmId, IReadOnlyList<string> subnets, CancellationToken ct)
 	{
 		try
 		{
 			var interfaces = await GetAsync<List<PveLxcInterface>>(client, auth,
 				$"api2/json/nodes/{Uri.EscapeDataString(node.NodeName)}/lxc/{vmId}/interfaces", ct);
 
-			var address = interfaces?
-				.Select(i => StripMask(i.Inet))
-				.FirstOrDefault(ip => ip is not null && SubnetFilter.IsInAny(subnets, ip));
+			var match = interfaces?
+				.Select(i => (i.HwAddr, Ip: StripMask(i.Inet)))
+				.FirstOrDefault(x => x.Ip is not null && SubnetFilter.IsInAny(subnets, x.Ip));
 
-			return address ?? "";
+			if (match?.Ip is null) return new GuestNetwork(null, null);
+
+			var vlan = await GetVlanAsync(client, auth, node, "lxc", vmId, match.Value.HwAddr, ct);
+			return new GuestNetwork(match.Value.Ip, vlan);
 		}
 		catch (Exception e)
 		{
 			return e;
+		}
+	}
+
+	/// <summary>
+	///     Reads the guest's NIC configuration (VM.Audit) and returns the VLAN of the interface that
+	///     carries <paramref name="mac" />. A failure here never fails the host: the address is already
+	///     known, so a missing VLAN is logged and reported as null rather than propagated.
+	/// </summary>
+	private async Task<int?> GetVlanAsync(HttpClient client, AuthenticationHeaderValue auth, PveNode node, string kind, int vmId, string? mac, CancellationToken ct)
+	{
+		try
+		{
+			var config = await GetAsync<Dictionary<string, JsonElement>>(client, auth,
+				$"api2/json/nodes/{Uri.EscapeDataString(node.NodeName)}/{kind}/{vmId}/config", ct);
+
+			if (config is null) return null;
+
+			var nets = config
+				.Where(entry => PveNetConfig.IsNetKey(entry.Key) && entry.Value.ValueKind == JsonValueKind.String)
+				.ToDictionary(entry => entry.Key, entry => entry.Value.GetString()!, StringComparer.Ordinal);
+
+			return PveNetConfig.ResolveVlan(nets, mac);
+		}
+		catch (Exception e)
+		{
+			logger.LogDebug(e, "Could not read the VLAN for {Kind} {VmId} on {Node}", kind, vmId, node.DisplayName);
+			return null;
 		}
 	}
 
@@ -272,4 +305,7 @@ public sealed class PveApiClient(
 			_ => e
 		};
 	}
+
+	/// <summary>A guest's observed address and the VLAN of the NIC it was seen on.</summary>
+	private sealed record GuestNetwork(string? Ip, int? Vlan);
 }

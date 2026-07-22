@@ -50,6 +50,9 @@ public static class SnapshotDiffer
 				// address until retention expires, so a reboot does not drop its DNS record.
 				var hasIp = !string.IsNullOrWhiteSpace(host.Ip);
 				var ip = hasIp ? host.Ip : previous?.Ip;
+				// The VLAN belongs to the current address; a retained host keeps the previous one
+				// alongside its retained IP rather than dropping to null.
+				var vlan = hasIp ? host.Vlan : previous?.Vlan;
 
 				var merged = new MonitoredHost
 				{
@@ -60,6 +63,7 @@ public static class SnapshotDiffer
 					VmId = host.VmId,
 					Hostname = host.Hostname,
 					Ip = ip,
+					Vlan = vlan,
 					FirstSeenAt = previous?.FirstSeenAt ?? now,
 					LastSeenAt = hasIp ? now : previous?.LastSeenAt ?? now,
 					Present = hasIp,

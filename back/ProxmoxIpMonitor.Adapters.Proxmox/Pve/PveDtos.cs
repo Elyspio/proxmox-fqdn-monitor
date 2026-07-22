@@ -58,6 +58,8 @@ internal sealed class PveAgentInterface
 {
 	[JsonPropertyName("name")] public string? Name { get; set; }
 
+	[JsonPropertyName("hardware-address")] public string? HardwareAddress { get; set; }
+
 	[JsonPropertyName("ip-addresses")] public List<PveAgentIpAddress>? IpAddresses { get; set; }
 }
 

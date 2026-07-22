@@ -11,6 +11,8 @@ export interface MonitoredHost {
 	vmId: number;
 	hostname: string;
 	ip: string | null;
+	/** VLAN tag of the NIC carrying `ip`; null for the hypervisor or an untagged NIC. */
+	vlan: number | null;
 	firstSeenAt: string;
 	lastSeenAt: string;
 	present: boolean;
