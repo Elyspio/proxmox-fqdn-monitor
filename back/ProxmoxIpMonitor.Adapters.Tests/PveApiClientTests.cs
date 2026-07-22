@@ -148,6 +148,83 @@ public class PveApiClientTests
 	}
 
 	[Fact]
+	public async Task VmVlanIsReadFromTheNicConfigOfTheInterfaceCarryingTheAddress()
+	{
+		// Two NICs on different VLANs; only the one whose MAC matches the observed address decides.
+		var (client, _) = Build(path => path switch
+		{
+			var p when p.EndsWith("/network") => FakeHttpMessageHandler.Json(NodeNetwork),
+			var p when p.EndsWith("/qemu") => FakeHttpMessageHandler.Json(
+				"""{"data":[{"vmid":100,"name":"web-01","status":"running"}]}"""),
+			var p when p.Contains("network-get-interfaces") => FakeHttpMessageHandler.Json(
+				"""
+				{"data":{"result":[
+				  {"name":"eth0","hardware-address":"BC:24:11:AA:BB:CC","ip-addresses":[
+				    {"ip-address":"10.0.10.5","ip-address-type":"ipv4"}]}]}}
+				"""),
+			var p when p.EndsWith("/qemu/100/config") => FakeHttpMessageHandler.Json(
+				"""{"data":{"net0":"virtio=AA:AA:AA:AA:AA:AA,bridge=vmbr0,tag=10","net1":"virtio=BC:24:11:AA:BB:CC,bridge=vmbr1,tag=30","cores":2}}"""),
+			var p when p.EndsWith("/lxc") => FakeHttpMessageHandler.Json("""{"data":[]}"""),
+			_ => FakeHttpMessageHandler.Json("""{"data":null}""")
+		});
+
+		var result = await client.CollectAsync(Node(), Subnets, Ct);
+
+		var vm = Assert.Single(result.Data!.Hosts, host => host.Type == HostType.Vm);
+		Assert.Equal("10.0.10.5", vm.Ip);
+		Assert.Equal(30, vm.Vlan);
+
+		// The hypervisor itself is never on a guest VLAN.
+		Assert.Null(Assert.Single(result.Data!.Hosts, host => host.Type == HostType.Node).Vlan);
+	}
+
+	[Fact]
+	public async Task ContainerVlanIsReadFromItsNicConfig()
+	{
+		var (client, _) = Build(path => path switch
+		{
+			var p when p.EndsWith("/network") => FakeHttpMessageHandler.Json(NodeNetwork),
+			var p when p.EndsWith("/qemu") => FakeHttpMessageHandler.Json("""{"data":[]}"""),
+			var p when p.EndsWith("/lxc") => FakeHttpMessageHandler.Json(
+				"""{"data":[{"vmid":241,"name":"ely-dns-01","status":"running"}]}"""),
+			var p when p.EndsWith("/lxc/241/config") => FakeHttpMessageHandler.Json(
+				"""{"data":{"net0":"name=eth0,bridge=vmbr0,hwaddr=BC:24:11:AA:BB:CC,ip=dhcp,tag=40,type=veth"}}"""),
+			var p when p.Contains("/interfaces") => FakeHttpMessageHandler.Json(
+				"""{"data":[{"name":"eth0","inet":"10.0.10.241/24","hwaddr":"BC:24:11:AA:BB:CC"}]}"""),
+			_ => FakeHttpMessageHandler.Json("""{"data":null}""")
+		});
+
+		var result = await client.CollectAsync(Node(), Subnets, Ct);
+
+		var container = Assert.Single(result.Data!.Hosts, host => host.Type == HostType.Container);
+		Assert.Equal("10.0.10.241", container.Ip);
+		Assert.Equal(40, container.Vlan);
+	}
+
+	[Fact]
+	public async Task AGuestOnAnUntaggedNicHasNoVlan()
+	{
+		var (client, _) = Build(path => path switch
+		{
+			var p when p.EndsWith("/network") => FakeHttpMessageHandler.Json(NodeNetwork),
+			var p when p.EndsWith("/qemu") => FakeHttpMessageHandler.Json(
+				"""{"data":[{"vmid":100,"name":"web-01","status":"running"}]}"""),
+			var p when p.Contains("network-get-interfaces") => FakeHttpMessageHandler.Json(
+				"""{"data":{"result":[{"name":"eth0","hardware-address":"BC:24:11:AA:BB:CC","ip-addresses":[{"ip-address":"10.0.10.5","ip-address-type":"ipv4"}]}]}}"""),
+			var p when p.EndsWith("/qemu/100/config") => FakeHttpMessageHandler.Json(
+				"""{"data":{"net0":"virtio=BC:24:11:AA:BB:CC,bridge=vmbr0"}}"""),
+			var p when p.EndsWith("/lxc") => FakeHttpMessageHandler.Json("""{"data":[]}"""),
+			_ => FakeHttpMessageHandler.Json("""{"data":null}""")
+		});
+
+		var result = await client.CollectAsync(Node(), Subnets, Ct);
+
+		var vm = Assert.Single(result.Data!.Hosts, host => host.Type == HostType.Vm);
+		Assert.Equal("10.0.10.5", vm.Ip);
+		Assert.Null(vm.Vlan);
+	}
+
+	[Fact]
 	public async Task AnUnreachableNodeFailsTheWholeSnapshot()
 	{
 		var (client, _) = Build(_ => FakeHttpMessageHandler.Json("""{"data":null}""", HttpStatusCode.Unauthorized));

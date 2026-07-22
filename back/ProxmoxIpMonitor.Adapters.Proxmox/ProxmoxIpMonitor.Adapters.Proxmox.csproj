@@ -15,4 +15,10 @@
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10"/>
 	</ItemGroup>
 
+	<ItemGroup>
+		<!-- VLAN parsing from the raw NIC option strings is tested directly; it has no caller
+		     outside the adapter that would justify a public surface. -->
+		<InternalsVisibleTo Include="ProxmoxIpMonitor.Adapters.Tests"/>
+	</ItemGroup>
+
 </Project>
