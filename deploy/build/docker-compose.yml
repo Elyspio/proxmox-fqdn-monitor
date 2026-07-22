@@ -1,0 +1,27 @@
+# Exécution locale de l'image construite, pour vérifier le conteneur hors Kubernetes.
+# Ne constitue pas une configuration complète : sans Keycloak joignable, l'API refuse de démarrer.
+services:
+  proxmox-ip-monitor:
+    build:
+      context: ../..
+      dockerfile: deploy/build/dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      ConnectionStrings__MongoDB: mongodb://mongo:27017/proxmox-ip-monitor
+      Auth__Authority: https://auth.elyspio.fr/realms/internal
+      Auth__Audience: proxmox-ip-monitor
+      Auth__AdminRole: proxmox-ip-monitor-admin
+      # Générer avec : openssl rand -base64 32
+      # Perdre cette clé rend illisibles tous les jetons enregistrés.
+      DataProtection__MasterKey: ${DATA_PROTECTION_MASTER_KEY:?set DATA_PROTECTION_MASTER_KEY}
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:8
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:

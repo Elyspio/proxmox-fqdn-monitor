@@ -1,4 +1,0 @@
-﻿<Solution>
-	<Project Path="Proxmox.Fqdn.Exporter.Tests\Proxmox.Fqdn.Exporter.Tests.csproj" Type="Classic C#"/>
-	<Project Path="Proxmox.Fqdn.Exporter\Proxmox.Fqdn.Exporter.csproj" Type="Classic C#"/>
-</Solution>
