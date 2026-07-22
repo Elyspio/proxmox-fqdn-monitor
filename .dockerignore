@@ -1,6 +1,9 @@
-﻿Proxmox.Fqdn.Exporter.Tests
-bin
-obj
-.idea
+**/bin
+**/obj
+**/node_modules
+front/dist
 .git
-Deployment/build/out
+.idea
+.vs
+deploy/build/out
+back/ProxmoxIpMonitor.E2E

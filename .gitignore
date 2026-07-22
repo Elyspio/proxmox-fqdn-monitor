@@ -1,7 +1,17 @@
-﻿bin
+bin
 obj
 .idea
-Deployment/build/out
+.vs
 *.user
-Proxmox.Fqdn.Exporter.Tests/fqdn.db
-config.secrets.json
+
+# Backend local configuration and secrets
+back/**/appsettings.Local.json
+back/**/appsettings.docker.json
+
+# Frontend
+node_modules
+front/dist
+front/.vite
+
+# Deployment artefacts
+deploy/build/out

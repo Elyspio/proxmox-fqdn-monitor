@@ -1,0 +1,17 @@
+<Solution>
+	<Folder Name="/Adapters/">
+		<Project Path="ProxmoxIpMonitor.Adapters.MongoDB/ProxmoxIpMonitor.Adapters.MongoDB.csproj"/>
+		<Project Path="ProxmoxIpMonitor.Adapters.Proxmox/ProxmoxIpMonitor.Adapters.Proxmox.csproj"/>
+		<Project Path="ProxmoxIpMonitor.Adapters.Dns/ProxmoxIpMonitor.Adapters.Dns.csproj"/>
+	</Folder>
+	<Folder Name="/Aspire/">
+		<Project Path="ProxmoxIpMonitor.AppHost/ProxmoxIpMonitor.AppHost.csproj"/>
+	</Folder>
+	<Folder Name="/Tests/">
+		<Project Path="ProxmoxIpMonitor.Adapters.Tests/ProxmoxIpMonitor.Adapters.Tests.csproj"/>
+		<Project Path="ProxmoxIpMonitor.Core.Tests/ProxmoxIpMonitor.Core.Tests.csproj"/>
+	</Folder>
+	<Project Path="ProxmoxIpMonitor.Abstractions/ProxmoxIpMonitor.Abstractions.csproj"/>
+	<Project Path="ProxmoxIpMonitor.Core/ProxmoxIpMonitor.Core.csproj"/>
+	<Project Path="ProxmoxIpMonitor.Web/ProxmoxIpMonitor.Web.csproj"/>
+</Solution>

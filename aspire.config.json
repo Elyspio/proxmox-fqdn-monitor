@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "back/ProxmoxIpMonitor.AppHost/ProxmoxIpMonitor.AppHost.csproj"
+  }
+}
