@@ -1,4 +1,4 @@
-import { createTheme } from "@mui/material";
+import { createTheme, type Theme } from "@mui/material";
 
 /**
  * Addresses, hostnames and zone names are compared character by character, so everything
@@ -6,25 +6,53 @@ import { createTheme } from "@mui/material";
  */
 export const monospace = '"JetBrains Mono Variable", ui-monospace, monospace';
 
-export const theme = createTheme({
-	palette: {
-		mode: "dark",
-		primary: { main: "#7aa2f7" },
-		secondary: { main: "#bb9af7" },
+export type PaletteMode = "light" | "dark";
+
+// Tokyo Night (dark) and its Day variant (light): the same hues tuned for each background,
+// so an address keeps the same semantic colour whichever mode the operator is in.
+const palettes = {
+	dark: {
+		primary: "#7aa2f7",
+		secondary: "#bb9af7",
 		background: { default: "#12141c", paper: "#1a1d29" },
-		success: { main: "#9ece6a" },
-		warning: { main: "#e0af68" },
-		error: { main: "#f7768e" },
+		success: "#9ece6a",
+		warning: "#e0af68",
+		error: "#f7768e",
+		tableBorder: "rgba(255,255,255,0.06)",
 	},
-	typography: {
-		fontFamily: '"Space Grotesk Variable", system-ui, sans-serif',
+	light: {
+		primary: "#2e7de9",
+		secondary: "#9854f1",
+		background: { default: "#e6e7ee", paper: "#ffffff" },
+		success: "#587539",
+		warning: "#8c6c3e",
+		error: "#f52a65",
+		tableBorder: "rgba(0,0,0,0.08)",
 	},
-	shape: { borderRadius: 10 },
-	components: {
-		MuiTableCell: {
-			styleOverrides: {
-				root: { borderColor: "rgba(255,255,255,0.06)" },
+} as const;
+
+export function createAppTheme(mode: PaletteMode): Theme {
+	const colors = palettes[mode];
+	return createTheme({
+		palette: {
+			mode,
+			primary: { main: colors.primary },
+			secondary: { main: colors.secondary },
+			background: colors.background,
+			success: { main: colors.success },
+			warning: { main: colors.warning },
+			error: { main: colors.error },
+		},
+		typography: {
+			fontFamily: '"Space Grotesk Variable", system-ui, sans-serif',
+		},
+		shape: { borderRadius: 10 },
+		components: {
+			MuiTableCell: {
+				styleOverrides: {
+					root: { borderColor: colors.tableBorder },
+				},
 			},
 		},
-	},
-});
+	});
+}

@@ -4,6 +4,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useSnackbar } from "notistack";
 import { useAppAuth } from "@/core/auth/AuthProvider";
 import { useCollectNow } from "@/core/api/mutations";
+import { ThemeToggle } from "@/view/layout/ThemeToggle";
 
 const tabs = [
 	{ label: "Hôtes", path: "/" },
@@ -27,7 +28,9 @@ export function AppLayout() {
 		collect.mutate(undefined, {
 			onSuccess: () => enqueueSnackbar("Collecte terminée", { variant: "success" }),
 			onError: (error) =>
-				enqueueSnackbar(error instanceof Error ? error.message : "Échec de la collecte", { variant: "error" }),
+				enqueueSnackbar(error instanceof Error ? error.message : "Échec de la collecte", {
+					variant: "error",
+				}),
 		});
 
 	return (
@@ -45,7 +48,12 @@ export function AppLayout() {
 
 					<Tabs value={active === -1 ? false : active} sx={{ flexGrow: 1 }}>
 						{tabs.map((tab) => (
-							<Tab key={tab.path} label={tab.label} component={NavLink} to={tab.path} />
+							<Tab
+								key={tab.path}
+								label={tab.label}
+								component={NavLink}
+								to={tab.path}
+							/>
 						))}
 					</Tabs>
 
@@ -59,6 +67,7 @@ export function AppLayout() {
 						>
 							Collecter
 						</Button>
+						<ThemeToggle />
 						{auth.name && (
 							<Typography variant="body2" color="text.secondary">
 								{auth.name}
