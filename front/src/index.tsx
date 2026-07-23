@@ -1,13 +1,12 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { CssBaseline, ThemeProvider } from "@mui/material";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SnackbarProvider } from "notistack";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import "@fontsource-variable/space-grotesk";
 import "@fontsource-variable/jetbrains-mono";
 
-import { theme } from "@/config/theme";
+import { ThemeModeProvider } from "@/config/themeMode";
 import { AppAuthProvider } from "@/core/auth/AuthProvider";
 import { AppLayout } from "@/view/layout/AppLayout";
 import { Gate } from "@/view/layout/Gate";
@@ -29,9 +28,11 @@ const queryClient = new QueryClient({
 
 createRoot(document.getElementById("root")!).render(
 	<StrictMode>
-		<ThemeProvider theme={theme}>
-			<CssBaseline />
-			<SnackbarProvider maxSnack={3} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
+		<ThemeModeProvider>
+			<SnackbarProvider
+				maxSnack={3}
+				anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+			>
 				<QueryClientProvider client={queryClient}>
 					<BrowserRouter>
 						<AppAuthProvider>
@@ -52,6 +53,6 @@ createRoot(document.getElementById("root")!).render(
 					</BrowserRouter>
 				</QueryClientProvider>
 			</SnackbarProvider>
-		</ThemeProvider>
+		</ThemeModeProvider>
 	</StrictMode>,
 );
