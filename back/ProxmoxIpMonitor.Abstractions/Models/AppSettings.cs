@@ -35,8 +35,11 @@ public sealed record AppSettings
 	/// <summary>How often every enabled node is polled.</summary>
 	public TimeSpan PollInterval { get; init; } = TimeSpan.FromMinutes(1);
 
-	/// <summary>CIDR ranges an address must fall into to be considered usable.</summary>
-	public IReadOnlyList<string> SubnetsFilter { get; init; } = ["10.0.0.0/8"];
+	/// <summary>
+	///     Subnets an address must fall into to be considered usable, each optionally carrying VLAN
+	///     metadata used only to group hosts in the UI.
+	/// </summary>
+	public IReadOnlyList<Subnet> SubnetsFilter { get; init; } = [new Subnet { Cidr = "10.0.0.0/8" }];
 
 	/// <summary>
 	///     How long a host keeps its DNS record after Proxmox stops reporting it.

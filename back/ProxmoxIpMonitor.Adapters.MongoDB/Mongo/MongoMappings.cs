@@ -32,6 +32,9 @@ public static class MongoMappings
 			},
 			_ => true);
 
+		// Custom: subnets predate their VLAN metadata, so a legacy CIDR string must still load.
+		BsonSerializer.TryRegisterSerializer(new SubnetBsonSerializer());
+
 		BsonClassMap.TryRegisterClassMap<AppSettings>(map =>
 		{
 			map.AutoMap();

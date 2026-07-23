@@ -79,11 +79,31 @@ public sealed record TechnitiumDto
 	public required bool CreatePtr { get; init; }
 }
 
+/// <summary>A configured subnet as the API exposes it: CIDR plus an optional human name.</summary>
+public sealed record SubnetDto
+{
+	public required string Cidr { get; init; }
+
+	public string? Label { get; init; }
+
+	public static SubnetDto From(Subnet subnet)
+	{
+		return new SubnetDto { Cidr = subnet.Cidr, Label = subnet.Label };
+	}
+}
+
+public sealed record SubnetWriteDto
+{
+	public string Cidr { get; init; } = "";
+
+	public string? Label { get; init; }
+}
+
 public sealed record SettingsDto
 {
 	public required TimeSpan PollInterval { get; init; }
 
-	public required IReadOnlyList<string> SubnetsFilter { get; init; }
+	public required IReadOnlyList<SubnetDto> SubnetsFilter { get; init; }
 
 	public required int RetentionMinutes { get; init; }
 
@@ -102,7 +122,7 @@ public sealed record SettingsDto
 		return new SettingsDto
 		{
 			PollInterval = settings.PollInterval,
-			SubnetsFilter = settings.SubnetsFilter,
+			SubnetsFilter = settings.SubnetsFilter.Select(SubnetDto.From).ToArray(),
 			RetentionMinutes = settings.RetentionMinutes,
 			ExcludedHostnames = settings.ExcludedHostnames,
 			ReconciliationEnabled = settings.ReconciliationEnabled,
@@ -144,7 +164,7 @@ public sealed record SettingsWriteDto
 {
 	public TimeSpan PollInterval { get; init; } = TimeSpan.FromMinutes(1);
 
-	public IReadOnlyList<string> SubnetsFilter { get; init; } = ["10.0.0.0/8"];
+	public IReadOnlyList<SubnetWriteDto> SubnetsFilter { get; init; } = [new SubnetWriteDto { Cidr = "10.0.0.0/8" }];
 
 	[Range(1, 525600)] public int RetentionMinutes { get; init; } = 300;
 

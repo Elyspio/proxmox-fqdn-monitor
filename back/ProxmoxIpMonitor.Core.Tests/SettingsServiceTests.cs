@@ -10,11 +10,11 @@ namespace ProxmoxIpMonitor.Core.Tests;
 
 public class SettingsServiceTests
 {
-	private static SettingsWriteDto Write(TechnitiumWriteDto? technitium = null, IReadOnlyList<string>? subnets = null)
+	private static SettingsWriteDto Write(TechnitiumWriteDto? technitium = null, IReadOnlyList<SubnetWriteDto>? subnets = null)
 	{
 		return new SettingsWriteDto
 		{
-			SubnetsFilter = subnets ?? ["10.0.0.0/8"],
+			SubnetsFilter = subnets ?? [new SubnetWriteDto { Cidr = "10.0.0.0/8" }],
 			Technitium = technitium ?? new TechnitiumWriteDto()
 		};
 	}
@@ -32,8 +32,30 @@ public class SettingsServiceTests
 		var (service, _) = Build();
 
 		var exception = await Assert.ThrowsAsync<HttpException>(
-			() => service.UpdateAsync(Write(subnets: ["10.0.0.0"]), TestContext.Current.CancellationToken));
+			() => service.UpdateAsync(Write(subnets: [new SubnetWriteDto { Cidr = "10.0.0.0" }]), TestContext.Current.CancellationToken));
 		Assert.Equal(System.Net.HttpStatusCode.BadRequest, exception.StatusCode);
+	}
+
+	[Fact]
+	public async Task Update_persists_label_and_normalises_blank_label()
+	{
+		var (service, repository) = Build();
+
+		var dto = await service.UpdateAsync(
+			Write(subnets:
+			[
+				new SubnetWriteDto { Cidr = " 10.0.0.0/24 ", Label = " Services " },
+				new SubnetWriteDto { Cidr = "10.0.1.0/24", Label = "  " }
+			]),
+			TestContext.Current.CancellationToken);
+
+		var stored = repository.Stored.SubnetsFilter;
+		Assert.Equal("10.0.0.0/24", stored[0].Cidr);
+		Assert.Equal("Services", stored[0].Label);
+		// A CIDR-only subnet stays usable: a blank label collapses to null.
+		Assert.Null(stored[1].Label);
+
+		Assert.Equal("Services", dto.SubnetsFilter[0].Label);
 	}
 
 	[Fact]

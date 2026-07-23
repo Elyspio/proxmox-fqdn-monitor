@@ -27,9 +27,17 @@ public sealed class SettingsService(
 
 		var current = await settings.GetAsync(ct);
 
-		foreach (var cidr in body.SubnetsFilter)
-			if (!IsCidr(cidr))
-				throw HttpException.BadRequest($"'{cidr}' is not valid CIDR notation (expected something like 10.0.0.0/8).");
+		var subnets = body.SubnetsFilter
+			.Select(subnet => new Subnet
+			{
+				Cidr = subnet.Cidr.Trim(),
+				Label = string.IsNullOrWhiteSpace(subnet.Label) ? null : subnet.Label.Trim()
+			})
+			.ToArray();
+
+		foreach (var subnet in subnets)
+			if (!IsCidr(subnet.Cidr))
+				throw HttpException.BadRequest($"'{subnet.Cidr}' is not valid CIDR notation (expected something like 10.0.0.0/8).");
 
 		// Same rule as node tokens: an empty field keeps the stored secret.
 		var apiToken = string.IsNullOrWhiteSpace(body.Technitium.ApiToken)
@@ -42,7 +50,7 @@ public sealed class SettingsService(
 		var updated = await settings.SaveAsync(current with
 		{
 			PollInterval = body.PollInterval,
-			SubnetsFilter = body.SubnetsFilter,
+			SubnetsFilter = subnets,
 			RetentionMinutes = body.RetentionMinutes,
 			ExcludedHostnames = body.ExcludedHostnames,
 			ReconciliationEnabled = body.ReconciliationEnabled,
