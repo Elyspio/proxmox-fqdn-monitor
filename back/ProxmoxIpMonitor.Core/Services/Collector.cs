@@ -131,7 +131,8 @@ public sealed class Collector(
 		var startedAt = DateTime.UtcNow;
 		var stopwatch = Stopwatch.GetTimestamp();
 
-		var result = await pveClient.CollectAsync(node, settings.SubnetsFilter, ct);
+		var cidrs = settings.SubnetsFilter.Select(subnet => subnet.Cidr).ToArray();
+		var result = await pveClient.CollectAsync(node, cidrs, ct);
 
 		if (!result.Success)
 		{

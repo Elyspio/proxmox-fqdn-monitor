@@ -18,13 +18,16 @@ import { useSaveSettings } from "@/core/api/mutations";
 import type { SettingsWriteDto } from "@/core/api/types";
 import { Loading, PageTitle, QueryError } from "@/view/components/Common";
 import { NodesCard } from "./NodesCard";
+import { SubnetsEditor } from "./SubnetsEditor";
 
 /** The API speaks .NET TimeSpan; the form speaks seconds. */
 function toSeconds(timespan: string): number {
 	const match = /^(?:(\d+)\.)?(\d{2}):(\d{2}):(\d{2})/.exec(timespan);
 	if (!match) return 60;
 	const [, days, hours, minutes, seconds] = match;
-	return Number(days ?? 0) * 86400 + Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds);
+	return (
+		Number(days ?? 0) * 86400 + Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds)
+	);
 }
 
 function toTimespan(seconds: number): string {
@@ -70,9 +73,12 @@ export function SettingsPage() {
 	if (settings.isLoading || !form) return <Loading />;
 	if (settings.isError) return <QueryError error={settings.error} />;
 
-	const patch = (changes: Partial<SettingsWriteDto>) => setForm((current) => (current ? { ...current, ...changes } : current));
+	const patch = (changes: Partial<SettingsWriteDto>) =>
+		setForm((current) => (current ? { ...current, ...changes } : current));
 	const patchTechnitium = (changes: Partial<SettingsWriteDto["technitium"]>) =>
-		setForm((current) => (current ? { ...current, technitium: { ...current.technitium, ...changes } } : current));
+		setForm((current) =>
+			current ? { ...current, technitium: { ...current.technitium, ...changes } } : current,
+		);
 
 	const submit = () => {
 		save.mutate(
@@ -88,7 +94,10 @@ export function SettingsPage() {
 					enqueueSnackbar("Réglages enregistrés", { variant: "success" });
 				},
 				onError: (error) =>
-					enqueueSnackbar(error instanceof Error ? error.message : "Échec de l'enregistrement", { variant: "error" }),
+					enqueueSnackbar(
+						error instanceof Error ? error.message : "Échec de l'enregistrement",
+						{ variant: "error" },
+					),
 			},
 		);
 	};
@@ -112,18 +121,17 @@ export function SettingsPage() {
 							onChange={(event) => setPollSeconds(Number(event.target.value))}
 							helperText="Plancher à 15 secondes côté serveur"
 						/>
-						<TextField
-							label="Filtres de sous-réseau (CIDR, un par ligne)"
-							multiline
-							minRows={2}
-							value={form.subnetsFilter.join("\n")}
-							onChange={(event) => patch({ subnetsFilter: event.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })}
+						<SubnetsEditor
+							value={form.subnetsFilter}
+							onChange={(subnetsFilter) => patch({ subnetsFilter })}
 						/>
 						<TextField
 							label="Rétention (minutes)"
 							type="number"
 							value={form.retentionMinutes}
-							onChange={(event) => patch({ retentionMinutes: Number(event.target.value) })}
+							onChange={(event) =>
+								patch({ retentionMinutes: Number(event.target.value) })
+							}
 							helperText="Durée pendant laquelle un hôte disparu conserve son enregistrement DNS"
 						/>
 						<TextField
@@ -131,13 +139,22 @@ export function SettingsPage() {
 							multiline
 							minRows={2}
 							value={form.excludedHostnames.join("\n")}
-							onChange={(event) => patch({ excludedHostnames: event.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })}
+							onChange={(event) =>
+								patch({
+									excludedHostnames: event.target.value
+										.split("\n")
+										.map((s) => s.trim())
+										.filter(Boolean),
+								})
+							}
 						/>
 						<TextField
 							label="Rétention des journaux (jours)"
 							type="number"
 							value={form.journalRetentionDays}
-							onChange={(event) => patch({ journalRetentionDays: Number(event.target.value) })}
+							onChange={(event) =>
+								patch({ journalRetentionDays: Number(event.target.value) })
+							}
 							helperText="Historique, santé et passages DNS. Modifie l'index TTL au prochain démarrage."
 						/>
 					</Stack>
@@ -152,8 +169,9 @@ export function SettingsPage() {
 
 					<Alert severity="warning" sx={{ mb: 2 }}>
 						<AlertTitle>Avant d&apos;activer la réconciliation</AlertTitle>
-						Laissez-la désactivée pour un premier passage, ouvrez l&apos;écran DNS et vérifiez que le diff
-						proposé ne contient aucun enregistrement posé à la main.
+						Laissez-la désactivée pour un premier passage, ouvrez l&apos;écran DNS et
+						vérifiez que le diff proposé ne contient aucun enregistrement posé à la
+						main.
 					</Alert>
 
 					<Stack spacing={2}>
@@ -161,7 +179,9 @@ export function SettingsPage() {
 							control={
 								<Checkbox
 									checked={form.technitium.enabled}
-									onChange={(event) => patchTechnitium({ enabled: event.target.checked })}
+									onChange={(event) =>
+										patchTechnitium({ enabled: event.target.checked })
+									}
 								/>
 							}
 							label="Activer l'export Technitium"
@@ -191,20 +211,26 @@ export function SettingsPage() {
 						<TextField
 							label="Nœud primaire"
 							value={form.technitium.primaryNode ?? ""}
-							onChange={(event) => patchTechnitium({ primaryNode: event.target.value || null })}
+							onChange={(event) =>
+								patchTechnitium({ primaryNode: event.target.value || null })
+							}
 							helperText="Les écritures ne visent que le primaire ; la réplication reste à la charge du cluster"
 						/>
 						<TextField
 							label="TTL des enregistrements (secondes)"
 							type="number"
 							value={form.technitium.recordTtlSeconds}
-							onChange={(event) => patchTechnitium({ recordTtlSeconds: Number(event.target.value) })}
+							onChange={(event) =>
+								patchTechnitium({ recordTtlSeconds: Number(event.target.value) })
+							}
 						/>
 						<FormControlLabel
 							control={
 								<Checkbox
 									checked={form.technitium.createPtr}
-									onChange={(event) => patchTechnitium({ createPtr: event.target.checked })}
+									onChange={(event) =>
+										patchTechnitium({ createPtr: event.target.checked })
+									}
 								/>
 							}
 							label="Créer les enregistrements PTR"
@@ -213,7 +239,9 @@ export function SettingsPage() {
 							control={
 								<Checkbox
 									checked={form.reconciliationEnabled}
-									onChange={(event) => patch({ reconciliationEnabled: event.target.checked })}
+									onChange={(event) =>
+										patch({ reconciliationEnabled: event.target.checked })
+									}
 								/>
 							}
 							label="Activer la réconciliation (écrit réellement dans la zone)"
@@ -222,7 +250,9 @@ export function SettingsPage() {
 							control={
 								<Checkbox
 									checked={form.deleteOrphanRecords}
-									onChange={(event) => patch({ deleteOrphanRecords: event.target.checked })}
+									onChange={(event) =>
+										patch({ deleteOrphanRecords: event.target.checked })
+									}
 								/>
 							}
 							label="Supprimer les enregistrements orphelins portant le marqueur de cet outil"

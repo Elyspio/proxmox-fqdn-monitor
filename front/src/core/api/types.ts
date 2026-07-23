@@ -141,9 +141,15 @@ export interface TechnitiumDto {
 	createPtr: boolean;
 }
 
+/** A configured subnet: the CIDR, plus an optional human name for the VLAN it maps to. */
+export interface Subnet {
+	cidr: string;
+	label: string | null;
+}
+
 export interface SettingsDto {
 	pollInterval: string;
-	subnetsFilter: string[];
+	subnetsFilter: Subnet[];
 	retentionMinutes: number;
 	excludedHostnames: string[];
 	reconciliationEnabled: boolean;
@@ -154,7 +160,7 @@ export interface SettingsDto {
 
 export interface SettingsWriteDto {
 	pollInterval: string;
-	subnetsFilter: string[];
+	subnetsFilter: Subnet[];
 	retentionMinutes: number;
 	excludedHostnames: string[];
 	reconciliationEnabled: boolean;

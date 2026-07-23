@@ -1,17 +1,10 @@
-import { useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import {
+	Box,
 	Chip,
+	Collapse,
 	IconButton,
-	MenuItem,
-	Paper,
 	Stack,
-	Table,
-	TableBody,
-	TableCell,
-	TableContainer,
-	TableHead,
-	TableRow,
-	TableSortLabel,
 	TextField,
 	Tooltip,
 	Typography,
@@ -20,242 +13,405 @@ import PushPinIcon from "@mui/icons-material/PushPin";
 import PushPinOutlinedIcon from "@mui/icons-material/PushPinOutlined";
 import BlockIcon from "@mui/icons-material/Block";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
-import { useHosts } from "@/core/api/queries";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import DnsOutlinedIcon from "@mui/icons-material/DnsOutlined";
+import { useHosts, useSettings } from "@/core/api/queries";
 import { usePatchHost } from "@/core/api/mutations";
 import type { MonitoredHost } from "@/core/api/types";
-import {
-	DateTimeText,
-	Empty,
-	HostTypeChip,
-	Loading,
-	Mono,
-	PageTitle,
-	QueryError,
-	SpacedRow,
-} from "@/view/components/Common";
+import { Empty, HostTypeChip, Loading, Mono, QueryError } from "@/view/components/Common";
+import { buildVlanGroups, type VlanGroup } from "./vlan";
 
-type SortKey = "hostname" | "ip" | "type" | "nodeName" | "vmId" | "vlan" | "lastSeenAt";
-type SortOrder = "asc" | "desc";
+const COLLAPSE_KEY = "hosts.collapsedVlans";
 
-/** Filter sentinels kept out of the numeric VLAN space so they never collide with a real tag. */
-const VLAN_ALL = "all";
-const VLAN_NONE = "none";
+// type | name | ip | vmid | status | actions — one grid so columns line up across every group.
+const ROW_COLUMNS = "84px minmax(0, 1fr) 132px 52px minmax(128px, auto) 76px";
 
-/** Packs an IPv4 into one number so addresses sort numerically, not lexically (…2 before …10). */
-function ipToSortable(ip: string | null): number {
-	if (!ip) return -1;
-	const parts = ip.split(".");
-	if (parts.length !== 4) return -1;
-	let value = 0;
-	for (const part of parts) {
-		const octet = Number(part);
-		if (!Number.isInteger(octet)) return -1;
-		value = value * 256 + octet;
-	}
-	return value;
-}
+/** Remembers which groups the user collapsed, so the layout survives a reload. */
+function usePersistentCollapse(key: string) {
+	const [collapsed, setCollapsed] = useState<Set<string>>(() => {
+		try {
+			const raw = localStorage.getItem(key);
+			return new Set<string>(raw ? (JSON.parse(raw) as string[]) : []);
+		} catch {
+			return new Set<string>();
+		}
+	});
 
-/** Comparable key per column. Missing values (no IP, no VLAN, a node's absent VMID) sort first. */
-function sortValue(host: MonitoredHost, key: SortKey): number | string {
-	switch (key) {
-		case "hostname":
-			return host.hostname.toLowerCase();
-		case "ip":
-			return ipToSortable(host.ip);
-		case "type":
-			return host.type;
-		case "nodeName":
-			return host.nodeName.toLowerCase();
-		case "vmId":
-			return host.type === "Node" ? -1 : host.vmId;
-		case "vlan":
-			return host.vlan ?? -1;
-		case "lastSeenAt":
-			return new Date(host.lastSeenAt).getTime();
-	}
-}
+	const toggle = useCallback(
+		(id: string) => {
+			setCollapsed((prev) => {
+				const next = new Set(prev);
+				if (next.has(id)) next.delete(id);
+				else next.add(id);
+				try {
+					localStorage.setItem(key, JSON.stringify([...next]));
+				} catch {
+					// Private mode / disabled storage: fall back to in-memory state only.
+				}
+				return next;
+			});
+		},
+		[key],
+	);
 
-function compare(a: MonitoredHost, b: MonitoredHost, key: SortKey): number {
-	const av = sortValue(a, key);
-	const bv = sortValue(b, key);
-	if (av < bv) return -1;
-	if (av > bv) return 1;
-	return 0;
-}
-
-/** Stable sort: the original order breaks ties, so rows do not jitter between renders. */
-function sortRows(rows: MonitoredHost[], key: SortKey, order: SortOrder): MonitoredHost[] {
-	return rows
-		.map((row, index) => [row, index] as const)
-		.sort((a, b) => {
-			const cmp = compare(a[0], b[0], key);
-			return cmp !== 0 ? (order === "asc" ? cmp : -cmp) : a[1] - b[1];
-		})
-		.map(([row]) => row);
+	return { collapsed, toggle };
 }
 
 export function HostsPage() {
 	const hosts = useHosts();
+	const settings = useSettings();
 	const patch = usePatchHost();
 	const [filter, setFilter] = useState("");
-	const [vlanFilter, setVlanFilter] = useState<string>(VLAN_ALL);
-	const [orderBy, setOrderBy] = useState<SortKey>("hostname");
-	const [order, setOrder] = useState<SortOrder>("asc");
+	const { collapsed, toggle } = usePersistentCollapse(COLLAPSE_KEY);
 
-	// The VLANs the filter can offer are whatever the current snapshot actually contains.
-	const vlanOptions = useMemo(() => {
-		const values = new Set<number>();
-		let hasUntagged = false;
-		for (const host of hosts.data ?? []) {
-			if (host.vlan === null) hasUntagged = true;
-			else values.add(host.vlan);
-		}
-		return { values: [...values].sort((a, b) => a - b), hasUntagged };
-	}, [hosts.data]);
+	const needle = filter.trim().toLowerCase();
 
-	const rows = useMemo(() => {
-		const needle = filter.trim().toLowerCase();
-		let all = hosts.data ?? [];
-		if (needle) {
-			all = all.filter(
-				(host) =>
-					host.hostname.toLowerCase().includes(needle) ||
-					(host.ip ?? "").includes(needle) ||
-					host.nodeName.toLowerCase().includes(needle),
-			);
-		}
-		if (vlanFilter !== VLAN_ALL) {
-			all = all.filter((host) => (vlanFilter === VLAN_NONE ? host.vlan === null : host.vlan === Number(vlanFilter)));
-		}
-		return sortRows(all, orderBy, order);
-	}, [hosts.data, filter, vlanFilter, orderBy, order]);
-
-	if (hosts.isLoading) return <Loading />;
-	if (hosts.isError) return <QueryError error={hosts.error} />;
-
-	const handleRequestSort = (column: SortKey) => {
-		if (orderBy === column) {
-			setOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-		} else {
-			setOrderBy(column);
-			setOrder("asc");
-		}
-	};
-
-	const sortHeader = (column: SortKey, label: string, align?: "right") => (
-		<TableCell align={align} sortDirection={orderBy === column ? order : false}>
-			<TableSortLabel
-				active={orderBy === column}
-				direction={orderBy === column ? order : "asc"}
-				onClick={() => handleRequestSort(column)}
-			>
-				{label}
-			</TableSortLabel>
-		</TableCell>
+	const matches = useCallback(
+		(host: MonitoredHost) =>
+			!needle ||
+			host.hostname.toLowerCase().includes(needle) ||
+			(host.ip ?? "").includes(needle) ||
+			host.nodeName.toLowerCase().includes(needle),
+		[needle],
 	);
+
+	const all = hosts.data ?? [];
+	const subnets = settings.data?.subnetsFilter ?? [];
+
+	const nodes = useMemo(
+		() => all.filter((host) => host.type === "Node").filter(matches),
+		[all, matches],
+	);
+	const guests = useMemo(() => all.filter((host) => host.type !== "Node"), [all]);
+
+	const counts = useMemo(
+		() => ({
+			vm: guests.filter((host) => host.type === "Vm").length,
+			lxc: guests.filter((host) => host.type === "Container").length,
+			active: guests.filter((host) => host.present).length,
+		}),
+		[guests],
+	);
+
+	// Bucket every guest by its real VLAN tag, then apply the search filter inside each group.
+	const groups = useMemo(() => {
+		return buildVlanGroups(guests, subnets)
+			.map((group) => ({ ...group, hosts: group.hosts.filter(matches) }))
+			.filter((group) => group.hosts.length > 0);
+	}, [guests, subnets, matches]);
+
+	if (hosts.isLoading || settings.isLoading) return <Loading />;
+	if (hosts.isError) return <QueryError error={hosts.error} />;
+	if (settings.isError) return <QueryError error={settings.error} />;
+
+	const nothing = nodes.length === 0 && groups.length === 0;
 
 	return (
 		<Stack spacing={3}>
-			<SpacedRow>
-				<PageTitle>Hôtes</PageTitle>
-				<Stack direction="row" spacing={2}>
-					<TextField
-						size="small"
-						placeholder="Filtrer par nom, IP ou nœud"
-						value={filter}
-						onChange={(event) => setFilter(event.target.value)}
-						sx={{ width: 320 }}
-					/>
-					<TextField
-						select
-						size="small"
-						label="VLAN"
-						value={vlanFilter}
-						onChange={(event) => setVlanFilter(event.target.value)}
-						sx={{ width: 160 }}
-					>
-						<MenuItem value={VLAN_ALL}>Tous</MenuItem>
-						{vlanOptions.hasUntagged && <MenuItem value={VLAN_NONE}>Sans VLAN</MenuItem>}
-						{vlanOptions.values.map((vlan) => (
-							<MenuItem key={vlan} value={String(vlan)}>
-								{vlan}
-							</MenuItem>
-						))}
-					</TextField>
+			<Box
+				sx={{
+					display: "flex",
+					flexWrap: "wrap",
+					justifyContent: "space-between",
+					alignItems: "center",
+					gap: 2,
+				}}
+			>
+				<Stack direction="row" spacing={3} sx={{ flexWrap: "wrap" }}>
+					<StatPill color="primary.main" count={counts.vm} label="VM" />
+					<StatPill color="text.secondary" count={counts.lxc} label="LXC/PCT" />
+					<StatPill color="success.main" count={counts.active} label="Actifs" />
 				</Stack>
-			</SpacedRow>
+				<TextField
+					size="small"
+					placeholder="Filtrer par nom, IP ou nœud"
+					value={filter}
+					onChange={(event) => setFilter(event.target.value)}
+					sx={{ width: 320, maxWidth: "100%" }}
+				/>
+			</Box>
 
-			<TableContainer component={Paper}>
-				<Table size="small">
-					<TableHead>
-						<TableRow>
-							{sortHeader("hostname", "Nom")}
-							{sortHeader("ip", "Adresse")}
-							{sortHeader("type", "Type")}
-							{sortHeader("nodeName", "Nœud")}
-							{sortHeader("vmId", "VMID")}
-							{sortHeader("vlan", "VLAN")}
-							<TableCell>État</TableCell>
-							{sortHeader("lastSeenAt", "Vu pour la dernière fois")}
-							<TableCell align="right">Actions</TableCell>
-						</TableRow>
-					</TableHead>
-					<TableBody>
-						{rows.map((host) => (
-							<TableRow key={host.key} hover>
-								<TableCell>
-									<Mono>{host.hostname}</Mono>
-								</TableCell>
-								<TableCell>
-									{host.ip ? (
-										<Mono>{host.ip}</Mono>
-									) : (
-										<Typography variant="body2" color="text.secondary">
-											—
-										</Typography>
-									)}
-								</TableCell>
-								<TableCell>
-									<HostTypeChip type={host.type} />
-								</TableCell>
-								<TableCell>{host.nodeName}</TableCell>
-								<TableCell>{host.type === "Node" ? "—" : host.vmId}</TableCell>
-								<TableCell>{host.vlan ?? "—"}</TableCell>
-								<TableCell>
-									<Stack direction="row" spacing={1}>
-										{host.present ? (
-											<Chip size="small" color="success" label="Actif" />
-										) : (
-											// Retained past its last sighting: still resolvable until retention expires.
-											<Chip size="small" color="warning" variant="outlined" label="Rétention" />
-										)}
-										{host.excluded && <Chip size="small" label="Exclu du DNS" />}
-										{host.pinned && <Chip size="small" label="Épinglé" />}
-									</Stack>
-								</TableCell>
-								<TableCell>
-									<DateTimeText value={host.lastSeenAt} />
-								</TableCell>
-								<TableCell align="right">
-									<Tooltip title={host.pinned ? "Ne plus épingler" : "Épingler (survit à la rétention)"}>
-										<IconButton size="small" onClick={() => patch.mutate({ key: host.key, pinned: !host.pinned })}>
-											{host.pinned ? <PushPinIcon fontSize="small" /> : <PushPinOutlinedIcon fontSize="small" />}
-										</IconButton>
-									</Tooltip>
-									<Tooltip title={host.excluded ? "Réintégrer au DNS" : "Exclure du DNS"}>
-										<IconButton size="small" onClick={() => patch.mutate({ key: host.key, excluded: !host.excluded })}>
-											{host.excluded ? <CheckCircleOutlineIcon fontSize="small" /> : <BlockIcon fontSize="small" />}
-										</IconButton>
-									</Tooltip>
-								</TableCell>
-							</TableRow>
-						))}
-					</TableBody>
-				</Table>
-				{rows.length === 0 && (
-					<Empty>Aucun hôte. Déclarez un nœud Proxmox dans les réglages, puis lancez une collecte.</Empty>
-				)}
-			</TableContainer>
+			{nothing ? (
+				needle ? (
+					<Empty>Aucun hôte ne correspond au filtre.</Empty>
+				) : (
+					<Empty>
+						Aucun hôte. Déclarez un nœud Proxmox dans les réglages, puis lancez une
+						collecte.
+					</Empty>
+				)
+			) : (
+				<>
+					{nodes.length > 0 && (
+						<Box>
+							<SectionLabel>Hyperviseur</SectionLabel>
+							<Stack spacing={1}>
+								{nodes.map((node) => (
+									<HypervisorRow key={node.key} node={node} />
+								))}
+							</Stack>
+						</Box>
+					)}
+
+					{groups.length > 0 && (
+						<Box>
+							<SectionLabel>VLANs</SectionLabel>
+							<Stack spacing={1}>
+								{groups.map((group) => (
+									<VlanGroupBlock
+										key={group.id}
+										group={group}
+										// While filtering, force every surviving group open regardless of remembered state.
+										expanded={needle ? true : !collapsed.has(group.id)}
+										onToggle={() => toggle(group.id)}
+										onPatch={(input) => patch.mutate(input)}
+									/>
+								))}
+							</Stack>
+						</Box>
+					)}
+				</>
+			)}
 		</Stack>
+	);
+}
+
+function StatPill({ color, count, label }: { color: string; count: number; label: string }) {
+	return (
+		<Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+			<Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: color }} />
+			<Typography component="span" sx={{ fontWeight: 700 }}>
+				{count}
+			</Typography>
+			<Typography component="span" color="text.secondary">
+				{label}
+			</Typography>
+		</Stack>
+	);
+}
+
+function SectionLabel({ children }: { children: ReactNode }) {
+	return (
+		<Typography
+			variant="overline"
+			color="text.secondary"
+			sx={{ display: "block", letterSpacing: 1, mb: 1 }}
+		>
+			{children}
+		</Typography>
+	);
+}
+
+function HypervisorRow({ node }: { node: MonitoredHost }) {
+	return (
+		<Box
+			sx={{
+				display: "flex",
+				alignItems: "center",
+				gap: 2,
+				px: 2,
+				py: 1.5,
+				borderRadius: 2,
+				border: 1,
+				borderColor: "divider",
+				bgcolor: "action.hover",
+			}}
+		>
+			<Chip
+				size="small"
+				color="secondary"
+				variant="outlined"
+				icon={<DnsOutlinedIcon />}
+				label="Hyperviseur"
+			/>
+			<Mono>{node.hostname}</Mono>
+			<Box sx={{ flexGrow: 1 }} />
+			{node.ip ? <Mono>{node.ip}</Mono> : <Typography color="text.secondary">—</Typography>}
+			<StatusChip host={node} />
+		</Box>
+	);
+}
+
+function groupHeader(group: VlanGroup): { badge: string | null; title: ReactNode; muted: boolean } {
+	if (group.kind === "untagged") return { badge: null, title: "Non taggé", muted: true };
+	if (group.kind === "no-address") return { badge: null, title: "Sans adresse", muted: true };
+
+	return {
+		badge: `VLAN ${group.vlan}`,
+		title: group.subnet ? (
+			<>
+				<Mono>{group.subnet.cidr}</Mono>
+				{group.subnet.label && (
+					<Typography component="span" sx={{ ml: 1.5 }}>
+						{group.subnet.label}
+					</Typography>
+				)}
+			</>
+		) : (
+			<Typography component="span" color="text.secondary">
+				Sous-réseau non configuré
+			</Typography>
+		),
+		muted: false,
+	};
+}
+
+function VlanGroupBlock({
+	group,
+	expanded,
+	onToggle,
+	onPatch,
+}: {
+	group: VlanGroup;
+	expanded: boolean;
+	onToggle: () => void;
+	onPatch: (input: { key: string; pinned?: boolean; excluded?: boolean }) => void;
+}) {
+	const { badge, title, muted } = groupHeader(group);
+
+	return (
+		<Box sx={{ border: 1, borderColor: "divider", borderRadius: 2, overflow: "hidden" }}>
+			<Box
+				onClick={onToggle}
+				sx={{
+					display: "flex",
+					alignItems: "center",
+					gap: 1.5,
+					px: 1.5,
+					py: 1,
+					cursor: "pointer",
+					userSelect: "none",
+					"&:hover": { bgcolor: "action.hover" },
+				}}
+			>
+				<IconButton size="small" sx={{ p: 0.25 }}>
+					{expanded ? (
+						<ExpandMoreIcon fontSize="small" />
+					) : (
+						<ChevronRightIcon fontSize="small" />
+					)}
+				</IconButton>
+				{badge && <Chip size="small" color="primary" variant="outlined" label={badge} />}
+				<Box
+					sx={{
+						display: "flex",
+						alignItems: "center",
+						color: muted ? "text.secondary" : "text.primary",
+					}}
+				>
+					{title}
+				</Box>
+				<Box sx={{ flexGrow: 1 }} />
+				<Chip size="small" label={group.hosts.length} sx={{ bgcolor: "action.selected" }} />
+			</Box>
+
+			<Collapse in={expanded} unmountOnExit>
+				<Box sx={{ borderTop: 1, borderColor: "divider" }}>
+					{group.hosts.map((host) => (
+						<HostRow key={host.key} host={host} onPatch={onPatch} />
+					))}
+				</Box>
+			</Collapse>
+		</Box>
+	);
+}
+
+function HostRow({
+	host,
+	onPatch,
+}: {
+	host: MonitoredHost;
+	onPatch: (input: { key: string; pinned?: boolean; excluded?: boolean }) => void;
+}) {
+	return (
+		<Box
+			sx={{
+				display: "grid",
+				gridTemplateColumns: ROW_COLUMNS,
+				alignItems: "center",
+				gap: 1.5,
+				px: 1.5,
+				py: 0.75,
+				"&:not(:last-of-type)": { borderBottom: 1, borderColor: "divider" },
+				"&:hover": { bgcolor: "action.hover" },
+				"&:hover .host-actions": { opacity: 1 },
+			}}
+		>
+			<HostTypeChip type={host.type} />
+
+			<Box sx={{ minWidth: 0, display: "flex", alignItems: "center", gap: 1 }}>
+				<Box sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+					<Mono>{host.hostname}</Mono>
+				</Box>
+				{host.pinned && <Chip size="small" variant="outlined" label="Épinglé" />}
+				{host.excluded && (
+					<Chip size="small" variant="outlined" color="warning" label="Exclu du DNS" />
+				)}
+			</Box>
+
+			<Box sx={{ textAlign: "right" }}>
+				{host.ip ? (
+					<Mono>{host.ip}</Mono>
+				) : (
+					<Typography color="text.secondary">—</Typography>
+				)}
+			</Box>
+
+			<Typography variant="body2" color="text.secondary" sx={{ textAlign: "right" }}>
+				{host.vmId}
+			</Typography>
+
+			<Box>
+				<StatusChip host={host} />
+			</Box>
+
+			<Box
+				className="host-actions"
+				sx={{
+					display: "flex",
+					justifyContent: "flex-end",
+					opacity: 0,
+					transition: "opacity 120ms",
+				}}
+			>
+				<Tooltip
+					title={host.pinned ? "Ne plus épingler" : "Épingler (survit à la rétention)"}
+				>
+					<IconButton
+						size="small"
+						onClick={() => onPatch({ key: host.key, pinned: !host.pinned })}
+					>
+						{host.pinned ? (
+							<PushPinIcon fontSize="small" />
+						) : (
+							<PushPinOutlinedIcon fontSize="small" />
+						)}
+					</IconButton>
+				</Tooltip>
+				<Tooltip title={host.excluded ? "Réintégrer au DNS" : "Exclure du DNS"}>
+					<IconButton
+						size="small"
+						onClick={() => onPatch({ key: host.key, excluded: !host.excluded })}
+					>
+						{host.excluded ? (
+							<CheckCircleOutlineIcon fontSize="small" />
+						) : (
+							<BlockIcon fontSize="small" />
+						)}
+					</IconButton>
+				</Tooltip>
+			</Box>
+		</Box>
+	);
+}
+
+function StatusChip({ host }: { host: MonitoredHost }) {
+	if (host.present) return <Chip size="small" color="success" label="Actif" />;
+	// Retained past its last sighting: still resolvable until retention expires.
+	return (
+		<Tooltip title={`Vu pour la dernière fois : ${new Date(host.lastSeenAt).toLocaleString()}`}>
+			<Chip size="small" color="warning" variant="outlined" label="Rétention" />
+		</Tooltip>
 	);
 }
