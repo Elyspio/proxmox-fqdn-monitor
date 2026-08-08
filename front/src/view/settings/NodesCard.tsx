@@ -74,7 +74,10 @@ export function NodesCard() {
 				setEditing(null);
 			},
 			onError: (error: unknown) =>
-				enqueueSnackbar(error instanceof Error ? error.message : "Échec de l'enregistrement", { variant: "error" }),
+				enqueueSnackbar(
+					error instanceof Error ? error.message : "Échec de l'enregistrement",
+					{ variant: "error" },
+				),
 		};
 
 		if (editing.id) update.mutate({ id: editing.id, body: editing.body }, done);
@@ -87,15 +90,22 @@ export function NodesCard() {
 			{ id: editing.id, body: editing.body },
 			{
 				onSuccess: (result) =>
-					enqueueSnackbar(result.message, { variant: result.success ? "success" : "error", autoHideDuration: 8000 }),
+					enqueueSnackbar(result.message, {
+						variant: result.success ? "success" : "error",
+						autoHideDuration: 8000,
+					}),
 				onError: (error) =>
-					enqueueSnackbar(error instanceof Error ? error.message : "Échec du test", { variant: "error" }),
+					enqueueSnackbar(error instanceof Error ? error.message : "Échec du test", {
+						variant: "error",
+					}),
 			},
 		);
 	};
 
 	const patch = (changes: Partial<NodeWriteDto>) =>
-		setEditing((current) => (current ? { ...current, body: { ...current.body, ...changes } } : current));
+		setEditing((current) =>
+			current ? { ...current, body: { ...current.body, ...changes } } : current,
+		);
 
 	return (
 		<Card>
@@ -108,9 +118,9 @@ export function NodesCard() {
 				</SpacedRow>
 
 				<Alert severity="info" sx={{ mb: 2 }}>
-					Le jeton doit porter un rôle donnant <Mono>Sys.Audit</Mono>, <Mono>VM.Audit</Mono> et{" "}
-					<Mono>VM.Monitor</Mono>. <Mono>PVEAuditor</Mono> seul ne suffit pas : il n&apos;autorise pas les
-					commandes de l&apos;agent invité.
+					Le jeton doit porter un rôle donnant <Mono>Sys.Audit</Mono>,{" "}
+					<Mono>VM.Audit</Mono> et <Mono>VM.Monitor</Mono>. <Mono>PVEAuditor</Mono> seul
+					ne suffit pas : il n&apos;autorise pas les commandes de l&apos;agent invité.
 				</Alert>
 
 				<Table size="small">
@@ -138,12 +148,20 @@ export function NodesCard() {
 								<TableCell>
 									<Mono>{node.tokenId}</Mono>
 									{!node.hasToken && (
-										<Typography variant="caption" color="error" sx={{ display: "block" }}>
+										<Typography
+											variant="caption"
+											color="error"
+											sx={{ display: "block" }}
+										>
 											aucun secret
 										</Typography>
 									)}
 								</TableCell>
-								<TableCell>{node.allowInvalidCertificate ? "Auto-signé accepté" : "Vérifié"}</TableCell>
+								<TableCell>
+									{node.allowInvalidCertificate
+										? "Auto-signé accepté"
+										: "Vérifié"}
+								</TableCell>
 								<TableCell>{node.enabled ? "Oui" : "Non"}</TableCell>
 								<TableCell align="right">
 									<IconButton size="small" onClick={() => openEdit(node)}>
@@ -152,7 +170,12 @@ export function NodesCard() {
 									<IconButton
 										size="small"
 										onClick={() => {
-											if (confirm(`Supprimer ${node.displayName} et tous ses hôtes ?`)) remove.mutate(node.id);
+											if (
+												confirm(
+													`Supprimer ${node.displayName} et tous ses hôtes ?`,
+												)
+											)
+												remove.mutate(node.id);
 										}}
 									>
 										<DeleteIcon fontSize="small" />
@@ -165,7 +188,12 @@ export function NodesCard() {
 				{nodes.data?.length === 0 && <Empty>Aucun nœud déclaré.</Empty>}
 			</CardContent>
 
-			<Dialog open={editing !== null} onClose={() => setEditing(null)} fullWidth maxWidth="sm">
+			<Dialog
+				open={editing !== null}
+				onClose={() => setEditing(null)}
+				fullWidth
+				maxWidth="sm"
+			>
 				<DialogTitle>{editing?.id ? "Modifier le nœud" : "Ajouter un nœud"}</DialogTitle>
 				<DialogContent>
 					<Stack spacing={2} sx={{ mt: 1 }}>
@@ -199,7 +227,11 @@ export function NodesCard() {
 						<TextField
 							label="Secret du jeton"
 							type="password"
-							helperText={editing?.id ? "Laisser vide pour conserver le secret enregistré" : "Requis"}
+							helperText={
+								editing?.id
+									? "Laisser vide pour conserver le secret enregistré"
+									: "Requis"
+							}
 							value={editing?.body.tokenSecret ?? ""}
 							onChange={(event) => patch({ tokenSecret: event.target.value })}
 							fullWidth
@@ -208,7 +240,9 @@ export function NodesCard() {
 							control={
 								<Checkbox
 									checked={editing?.body.allowInvalidCertificate ?? false}
-									onChange={(event) => patch({ allowInvalidCertificate: event.target.checked })}
+									onChange={(event) =>
+										patch({ allowInvalidCertificate: event.target.checked })
+									}
 								/>
 							}
 							label="Accepter le certificat auto-signé"
@@ -229,7 +263,11 @@ export function NodesCard() {
 						Tester la connexion
 					</Button>
 					<Button onClick={() => setEditing(null)}>Annuler</Button>
-					<Button variant="contained" onClick={save} loading={create.isPending || update.isPending}>
+					<Button
+						variant="contained"
+						onClick={save}
+						loading={create.isPending || update.isPending}
+					>
 						Enregistrer
 					</Button>
 				</DialogActions>

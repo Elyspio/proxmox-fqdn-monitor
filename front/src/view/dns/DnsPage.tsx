@@ -21,7 +21,15 @@ import { useSnackbar } from "notistack";
 import { useDnsPushes, useDnsState, useSettings } from "@/core/api/queries";
 import { usePushDns } from "@/core/api/mutations";
 import type { ExistingRecord } from "@/core/api/types";
-import { DateTimeText, Empty, Loading, Mono, PageTitle, QueryError, SpacedRow } from "@/view/components/Common";
+import {
+	DateTimeText,
+	Empty,
+	Loading,
+	Mono,
+	PageTitle,
+	QueryError,
+	SpacedRow,
+} from "@/view/components/Common";
 
 function Metric({ label, value, color }: { label: string; value: number; color?: string }) {
 	return (
@@ -38,7 +46,15 @@ function Metric({ label, value, color }: { label: string; value: number; color?:
 	);
 }
 
-function RecordTable({ records, title, subtitle }: { records: ExistingRecord[]; title: ReactTitle; subtitle?: string }) {
+function RecordTable({
+	records,
+	title,
+	subtitle,
+}: {
+	records: ExistingRecord[];
+	title: ReactTitle;
+	subtitle?: string;
+}) {
 	return (
 		<TableContainer component={Paper}>
 			<Stack sx={{ p: 2 }} spacing={0.5}>
@@ -93,7 +109,10 @@ export function DnsPage() {
 	const runPush = () =>
 		push.mutate(undefined, {
 			onSuccess: (results) => {
-				const total = results.reduce((sum, result) => sum + result.written + result.deleted, 0);
+				const total = results.reduce(
+					(sum, result) => sum + result.written + result.deleted,
+					0,
+				);
 				enqueueSnackbar(
 					reconciliationEnabled
 						? `${total} enregistrement(s) appliqué(s)`
@@ -102,14 +121,21 @@ export function DnsPage() {
 				);
 			},
 			onError: (error) =>
-				enqueueSnackbar(error instanceof Error ? error.message : "Échec du push", { variant: "error" }),
+				enqueueSnackbar(error instanceof Error ? error.message : "Échec du push", {
+					variant: "error",
+				}),
 		});
 
 	return (
 		<Stack spacing={3}>
 			<SpacedRow>
 				<PageTitle>Export DNS</PageTitle>
-				<Button startIcon={<CloudUploadIcon />} variant="contained" onClick={runPush} loading={push.isPending}>
+				<Button
+					startIcon={<CloudUploadIcon />}
+					variant="contained"
+					onClick={runPush}
+					loading={push.isPending}
+				>
 					{reconciliationEnabled ? "Appliquer maintenant" : "Simuler maintenant"}
 				</Button>
 			</SpacedRow>
@@ -117,8 +143,8 @@ export function DnsPage() {
 			{!reconciliationEnabled && (
 				<Alert severity="info">
 					<AlertTitle>Réconciliation désactivée</AlertTitle>
-					La zone n&apos;est jamais modifiée. Le diff ci-dessous montre ce qui serait écrit. Activez la
-					réconciliation dans les réglages une fois le diff vérifié.
+					La zone n&apos;est jamais modifiée. Le diff ci-dessous montre ce qui serait
+					écrit. Activez la réconciliation dans les réglages une fois le diff vérifié.
 				</Alert>
 			)}
 
@@ -126,7 +152,8 @@ export function DnsPage() {
 				<Stack key={zone.zone} spacing={3}>
 					{!zone.enabled && (
 						<Alert severity="warning">
-							Export Technitium désactivé ou incomplet. Renseignez URL, zone et jeton dans les réglages.
+							Export Technitium désactivé ou incomplet. Renseignez URL, zone et jeton
+							dans les réglages.
 						</Alert>
 					)}
 
@@ -141,8 +168,16 @@ export function DnsPage() {
 						<>
 							<Box sx={{ display: "flex", gap: 2 }}>
 								<Metric label="À jour" value={zone.upToDate.length} />
-								<Metric label="À écrire" value={zone.toWrite.length} color="warning.main" />
-								<Metric label="Orphelins" value={zone.orphans.length} color="error.main" />
+								<Metric
+									label="À écrire"
+									value={zone.toWrite.length}
+									color="warning.main"
+								/>
+								<Metric
+									label="Orphelins"
+									value={zone.orphans.length}
+									color="error.main"
+								/>
 								<Metric label="Hors gestion" value={zone.unmanaged.length} />
 							</Box>
 
@@ -183,7 +218,9 @@ export function DnsPage() {
 											<Chip
 												size="small"
 												color={deleteOrphans ? "error" : "default"}
-												label={deleteOrphans ? "Seront supprimés" : "Conservés"}
+												label={
+													deleteOrphans ? "Seront supprimés" : "Conservés"
+												}
 											/>
 										</Box>
 									}
@@ -193,7 +230,11 @@ export function DnsPage() {
 							{zone.unmanaged.length > 0 && (
 								<RecordTable
 									records={zone.unmanaged}
-									title={<Typography variant="subtitle1">Enregistrements hors gestion</Typography>}
+									title={
+										<Typography variant="subtitle1">
+											Enregistrements hors gestion
+										</Typography>
+									}
 									subtitle="Posés à la main dans la zone. Ils ne portent pas le marqueur de cet outil et ne sont donc jamais écrits ni supprimés."
 								/>
 							)}
@@ -224,7 +265,11 @@ export function DnsPage() {
 									<DateTimeText value={entry.at} />
 								</TableCell>
 								<TableCell>
-									<Chip size="small" variant="outlined" label={entry.dryRun ? "Simulation" : "Appliqué"} />
+									<Chip
+										size="small"
+										variant="outlined"
+										label={entry.dryRun ? "Simulation" : "Appliqué"}
+									/>
 								</TableCell>
 								<TableCell align="right">{entry.written}</TableCell>
 								<TableCell align="right">{entry.skipped}</TableCell>

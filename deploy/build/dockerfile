@@ -14,15 +14,14 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS builder-back
 WORKDIR /src
 COPY global.json ./
 COPY back/ ./back/
-RUN dotnet restore back/ProxmoxIpMonitor.Web/ProxmoxIpMonitor.Web.csproj
-RUN dotnet publish back/ProxmoxIpMonitor.Web/ProxmoxIpMonitor.Web.csproj -c Release -o /app/publish --no-restore
+RUN dotnet publish back/ProxmoxIpMonitor.Web/ProxmoxIpMonitor.Web.csproj -c Release -o /app/publish
 
 # Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS production
 ENV TZ=Europe/Paris
 ENV ASPNETCORE_URLS=http://+:4000
 ENV ASPNETCORE_ENVIRONMENT=Production
-WORKDIR /app
+WORKDIR /app	
 COPY --from=builder-back /app/publish ./
 COPY --from=builder-front /front/dist ./wwwroot
 EXPOSE 4000

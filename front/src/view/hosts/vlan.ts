@@ -57,6 +57,40 @@ export function matchSubnet(subnets: readonly Subnet[], ip: string | null): Subn
 	return best;
 }
 
+/** The prefix length of a CIDR (0–32), or null when it does not parse. */
+export function cidrPrefix(cidr: string): number | null {
+	return parseCidr(cidr)?.prefix ?? null;
+}
+
+/** Formats a 32-bit value as a dotted-quad IPv4 address. */
+function toIpString(value: number): string {
+	return [24, 16, 8, 0].map((shift) => (value >>> shift) & 0xff).join(".");
+}
+
+/**
+ * Suggests the tightest CIDR that still encloses every given IPv4 address, clamped to a maximum
+ * prefix of /24. The clamp matters: you usually only see the powered-on hosts of a VLAN, so fitting
+ * the range exactly to them would leave a guest that is off tonight outside the suggestion — and once
+ * applied, that guest's address would stop passing the collection filter. Returns null when nothing
+ * parses (e.g. an empty group or IPv6-only hosts).
+ */
+export function suggestCidr(ips: readonly (string | null)[]): string | null {
+	const values: number[] = [];
+	for (const ip of ips) {
+		const value = ip ? toUint32(ip) : null;
+		if (value !== null) values.push(value);
+	}
+	if (values.length === 0) return null;
+
+	// OR of every address XOR'd against the first isolates the bits that differ across the group;
+	// clz32 then counts the identical leading bits, i.e. the smallest enclosing prefix.
+	let diff = 0;
+	for (const value of values) diff |= value ^ values[0];
+	const prefix = Math.min(Math.clz32(diff >>> 0), 24);
+	const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
+	return `${toIpString((values[0] & mask) >>> 0)}/${prefix}`;
+}
+
 /** Orders hosts inside a group by IP (numeric, so …2 precedes …10), IP-less hosts last. */
 function byIp(a: MonitoredHost, b: MonitoredHost): number {
 	const av = a.ip ? toUint32(a.ip) : null;

@@ -104,8 +104,12 @@ export function HistoryPage() {
 								<TableCell>
 									<EventChip kind={event.kind} />
 								</TableCell>
-								<TableCell>{event.previousIp ? <Mono>{event.previousIp}</Mono> : "—"}</TableCell>
-								<TableCell>{event.currentIp ? <Mono>{event.currentIp}</Mono> : "—"}</TableCell>
+								<TableCell>
+									{event.previousIp ? <Mono>{event.previousIp}</Mono> : "—"}
+								</TableCell>
+								<TableCell>
+									{event.currentIp ? <Mono>{event.currentIp}</Mono> : "—"}
+								</TableCell>
 							</TableRow>
 						))}
 					</TableBody>

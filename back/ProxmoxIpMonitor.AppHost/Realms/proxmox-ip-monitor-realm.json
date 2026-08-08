@@ -22,14 +22,14 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": true,
       "redirectUris": [
-        "http://localhost:5173/*"
+        "__FRONT_ORIGIN__/*"
       ],
       "webOrigins": [
-        "http://localhost:5173"
+        "__FRONT_ORIGIN__"
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:5173/*"
+        "post.logout.redirect.uris": "__FRONT_ORIGIN__/*"
       },
       "protocolMappers": [
         {

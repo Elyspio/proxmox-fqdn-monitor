@@ -63,7 +63,10 @@ export function HealthPage() {
 			<PageTitle>Santé de la collecte</PageTitle>
 
 			{runs.length === 0 && (
-				<Empty>Aucune collecte enregistrée. Déclarez un nœud dans les réglages puis lancez une collecte.</Empty>
+				<Empty>
+					Aucune collecte enregistrée. Déclarez un nœud dans les réglages puis lancez une
+					collecte.
+				</Empty>
 			)}
 
 			<Grid container spacing={3}>
@@ -101,17 +104,33 @@ export function HealthPage() {
 										<Divider sx={{ my: 2 }} />
 										<Typography variant="subtitle2" gutterBottom>
 											Hôtes sans adresse exploitable
-											<Chip size="small" label={run.issues.length} sx={{ ml: 1 }} />
+											<Chip
+												size="small"
+												label={run.issues.length}
+												sx={{ ml: 1 }}
+											/>
 										</Typography>
 										<List dense disablePadding>
 											{run.issues.map((issue) => (
-												<ListItem key={`${issue.type}-${issue.vmId}`} disableGutters>
+												<ListItem
+													key={`${issue.type}-${issue.vmId}`}
+													disableGutters
+												>
 													<ListItemText
 														primary={
-															<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+															<Box
+																sx={{
+																	display: "flex",
+																	alignItems: "center",
+																	gap: 1,
+																}}
+															>
 																<HostTypeChip type={issue.type} />
 																<Mono>{issue.hostname}</Mono>
-																<Typography variant="caption" color="text.secondary">
+																<Typography
+																	variant="caption"
+																	color="text.secondary"
+																>
 																	#{issue.vmId}
 																</Typography>
 															</Box>

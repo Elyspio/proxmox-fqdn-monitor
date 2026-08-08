@@ -5,7 +5,11 @@ import type { CollectionOutcome, HostType, IpEventKind } from "@/core/api/types"
 
 /** Anything that is an address, a hostname or a zone name renders through this. */
 export function Mono({ children }: { children: ReactNode }) {
-	return <Box component="span" sx={{ fontFamily: monospace, fontSize: "0.875rem" }}>{children}</Box>;
+	return (
+		<Box component="span" sx={{ fontFamily: monospace, fontSize: "0.875rem" }}>
+			{children}
+		</Box>
+	);
 }
 
 export function Loading() {
@@ -55,7 +59,13 @@ const eventLabels: Record<IpEventKind, string> = {
 
 export function EventChip({ kind }: { kind: IpEventKind }) {
 	const color =
-		kind === "Appeared" ? "success" : kind === "Changed" ? "warning" : kind === "Disappeared" ? "error" : "default";
+		kind === "Appeared"
+			? "success"
+			: kind === "Changed"
+				? "warning"
+				: kind === "Disappeared"
+					? "error"
+					: "default";
 	return <Chip size="small" label={eventLabels[kind]} color={color} variant="outlined" />;
 }
 
@@ -76,7 +86,15 @@ export function PageTitle({ children }: { children: ReactNode }) {
 /** Horizontal row that pushes its last child to the right edge. */
 export function SpacedRow({ children, sx }: { children: ReactNode; sx?: object }) {
 	return (
-		<Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, ...sx }}>
+		<Box
+			sx={{
+				display: "flex",
+				justifyContent: "space-between",
+				alignItems: "center",
+				gap: 2,
+				...sx,
+			}}
+		>
 			{children}
 		</Box>
 	);
