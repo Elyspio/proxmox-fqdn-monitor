@@ -15,7 +15,8 @@ import type {
 /** Centralised query keys, so mutations and manual actions can invalidate precisely. */
 export const qk = {
 	hosts: ["hosts"] as const,
-	events: (hostKey?: string, kind?: IpEventKind, skip = 0) => ["events", hostKey ?? null, kind ?? null, skip] as const,
+	events: (hostKey?: string, kind?: IpEventKind, skip = 0) =>
+		["events", hostKey ?? null, kind ?? null, skip] as const,
 	collectionHealth: ["health", "collection"] as const,
 	dnsState: ["dns", "state"] as const,
 	dnsPushes: ["dns", "pushes"] as const,
@@ -68,7 +69,8 @@ export function useDnsState() {
 export function useDnsPushes(take = 20) {
 	return useQuery({
 		queryKey: qk.dnsPushes,
-		queryFn: async () => (await http.get<DnsPush[]>("/api/dns/pushes", { params: { take } })).data,
+		queryFn: async () =>
+			(await http.get<DnsPush[]>("/api/dns/pushes", { params: { take } })).data,
 	});
 }
 
