@@ -100,7 +100,7 @@ These are the properties the design rests on. Changing them is a product decisio
 ```bash
 aspire run                                  # Mongo + Keycloak + API + Vite
 dotnet build back/ProxmoxIpMonitor.slnx
-dotnet test back/ProxmoxIpMonitor.slnx
+dotnet test --solution back/ProxmoxIpMonitor.slnx
 ```
 
 ```bash

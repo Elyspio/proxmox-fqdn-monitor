@@ -88,7 +88,7 @@ and `noroles` / `noroles`, which does not — the second one exercises the acces
 
 ```bash
 dotnet build back/ProxmoxIpMonitor.slnx
-dotnet test back/ProxmoxIpMonitor.slnx
+dotnet test --solution back/ProxmoxIpMonitor.slnx
 ```
 
 ```bash
