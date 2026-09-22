@@ -1,6 +1,7 @@
 using ProxmoxIpMonitor.Abstractions.Interfaces;
 using ProxmoxIpMonitor.Abstractions.Models;
 using ProxmoxIpMonitor.Core.Services;
+using Shouldly;
 using Xunit;
 
 namespace ProxmoxIpMonitor.Core.Tests;
@@ -56,14 +57,14 @@ public class SnapshotDifferTests
 	{
 		var result = Diff([], [Found("web-01", "10.0.10.5", 101)]);
 
-		var host = Assert.Single(result.Upserts);
-		Assert.Equal("10.0.10.5", host.Ip);
-		Assert.True(host.Present);
+		var host = result.Upserts.ShouldHaveSingleItem();
+		host.Ip.ShouldBe("10.0.10.5");
+		host.Present.ShouldBeTrue();
 
-		var evt = Assert.Single(result.Events);
-		Assert.Equal(IpEventKind.Appeared, evt.Kind);
-		Assert.Null(evt.PreviousIp);
-		Assert.Equal("10.0.10.5", evt.CurrentIp);
+		var evt = result.Events.ShouldHaveSingleItem();
+		evt.Kind.ShouldBe(IpEventKind.Appeared);
+		evt.PreviousIp.ShouldBeNull();
+		evt.CurrentIp.ShouldBe("10.0.10.5");
 	}
 
 	[Fact]
@@ -73,10 +74,10 @@ public class SnapshotDifferTests
 
 		var result = Diff([stored], [Found("web-01", "10.0.10.9", 101)]);
 
-		var evt = Assert.Single(result.Events);
-		Assert.Equal(IpEventKind.Changed, evt.Kind);
-		Assert.Equal("10.0.10.5", evt.PreviousIp);
-		Assert.Equal("10.0.10.9", evt.CurrentIp);
+		var evt = result.Events.ShouldHaveSingleItem();
+		evt.Kind.ShouldBe(IpEventKind.Changed);
+		evt.PreviousIp.ShouldBe("10.0.10.5");
+		evt.CurrentIp.ShouldBe("10.0.10.9");
 	}
 
 	[Fact]
@@ -86,8 +87,8 @@ public class SnapshotDifferTests
 
 		var result = Diff([stored], [Found("web-01", "10.0.10.5", 101)]);
 
-		Assert.Empty(result.Events);
-		Assert.Empty(result.Deletions);
+		result.Events.ShouldBeEmpty();
+		result.Deletions.ShouldBeEmpty();
 	}
 
 	[Fact]
@@ -99,11 +100,11 @@ public class SnapshotDifferTests
 
 		var result = Diff([stored], []);
 
-		Assert.Empty(result.Deletions);
-		var kept = Assert.Single(result.Upserts);
-		Assert.Equal("10.0.10.5", kept.Ip);
-		Assert.False(kept.Present);
-		Assert.Equal(IpEventKind.Disappeared, Assert.Single(result.Events).Kind);
+		result.Deletions.ShouldBeEmpty();
+		var kept = result.Upserts.ShouldHaveSingleItem();
+		kept.Ip.ShouldBe("10.0.10.5");
+		kept.Present.ShouldBeFalse();
+		result.Events.ShouldHaveSingleItem().Kind.ShouldBe(IpEventKind.Disappeared);
 	}
 
 	[Fact]
@@ -113,7 +114,7 @@ public class SnapshotDifferTests
 
 		var result = Diff([stored], []);
 
-		Assert.Equal(stored.Key, Assert.Single(result.Deletions));
+		result.Deletions.ShouldHaveSingleItem().ShouldBe(stored.Key);
 	}
 
 	[Fact]
@@ -123,7 +124,7 @@ public class SnapshotDifferTests
 
 		var result = Diff([stored], []);
 
-		Assert.Empty(result.Deletions);
+		result.Deletions.ShouldBeEmpty();
 	}
 
 	[Fact]
@@ -135,9 +136,9 @@ public class SnapshotDifferTests
 
 		var result = Diff([stored], [], false);
 
-		Assert.Empty(result.Deletions);
-		Assert.Empty(result.Upserts);
-		Assert.Empty(result.Events);
+		result.Deletions.ShouldBeEmpty();
+		result.Upserts.ShouldBeEmpty();
+		result.Events.ShouldBeEmpty();
 	}
 
 	[Fact]
@@ -147,10 +148,10 @@ public class SnapshotDifferTests
 
 		var result = Diff([stored], [Found("web-01", null, 101, "QEMU guest agent is not responding")]);
 
-		var host = Assert.Single(result.Upserts);
-		Assert.Equal("10.0.10.5", host.Ip);
-		Assert.False(host.Present);
-		Assert.Equal(IpEventKind.Disappeared, Assert.Single(result.Events).Kind);
+		var host = result.Upserts.ShouldHaveSingleItem();
+		host.Ip.ShouldBe("10.0.10.5");
+		host.Present.ShouldBeFalse();
+		result.Events.ShouldHaveSingleItem().Kind.ShouldBe(IpEventKind.Disappeared);
 	}
 
 	[Fact]
@@ -160,7 +161,7 @@ public class SnapshotDifferTests
 
 		var result = Diff([stored], [Found("web-01", "10.0.10.5", 101, vlan: 30)]);
 
-		Assert.Equal(30, Assert.Single(result.Upserts).Vlan);
+		result.Upserts.ShouldHaveSingleItem().Vlan.ShouldBe(30);
 	}
 
 	[Fact]
@@ -171,9 +172,9 @@ public class SnapshotDifferTests
 
 		var result = Diff([stored], []);
 
-		var kept = Assert.Single(result.Upserts);
-		Assert.Equal("10.0.10.5", kept.Ip);
-		Assert.Equal(30, kept.Vlan);
+		var kept = result.Upserts.ShouldHaveSingleItem();
+		kept.Ip.ShouldBe("10.0.10.5");
+		kept.Vlan.ShouldBe(30);
 	}
 
 	[Fact]
@@ -183,9 +184,9 @@ public class SnapshotDifferTests
 
 		var result = Diff([stored], [Found("web-01", "10.0.10.5", 101)]);
 
-		var evt = Assert.Single(result.Events);
-		Assert.Equal(IpEventKind.Appeared, evt.Kind);
-		Assert.True(Assert.Single(result.Upserts).Present);
+		var evt = result.Events.ShouldHaveSingleItem();
+		evt.Kind.ShouldBe(IpEventKind.Appeared);
+		result.Upserts.ShouldHaveSingleItem().Present.ShouldBeTrue();
 	}
 
 	[Fact]
@@ -195,8 +196,8 @@ public class SnapshotDifferTests
 
 		var result = Diff([stored], [Found("web-02", "10.0.10.5", 101)]);
 
-		var evt = Assert.Single(result.Events);
-		Assert.Equal(IpEventKind.Renamed, evt.Kind);
+		var evt = result.Events.ShouldHaveSingleItem();
+		evt.Kind.ShouldBe(IpEventKind.Renamed);
 	}
 
 	[Fact]
@@ -206,6 +207,6 @@ public class SnapshotDifferTests
 
 		var result = Diff([stored], [Found("web-01", null, 101, "no agent")]);
 
-		Assert.Empty(result.Events);
+		result.Events.ShouldBeEmpty();
 	}
 }

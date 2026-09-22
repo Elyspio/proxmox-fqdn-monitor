@@ -4,6 +4,7 @@ using ProxmoxIpMonitor.Abstractions.Interfaces;
 using ProxmoxIpMonitor.Abstractions.Models;
 using ProxmoxIpMonitor.Abstractions.Transports;
 using ProxmoxIpMonitor.Core.Services;
+using Shouldly;
 using Xunit;
 
 namespace ProxmoxIpMonitor.Core.Tests;
@@ -31,9 +32,8 @@ public class SettingsServiceTests
 	{
 		var (service, _) = Build();
 
-		var exception = await Assert.ThrowsAsync<HttpException>(
-			() => service.UpdateAsync(Write(subnets: [new SubnetWriteDto { Cidr = "10.0.0.0" }]), TestContext.Current.CancellationToken));
-		Assert.Equal(System.Net.HttpStatusCode.BadRequest, exception.StatusCode);
+		var exception = await Should.ThrowAsync<HttpException>(() => service.UpdateAsync(Write(subnets: [new SubnetWriteDto { Cidr = "10.0.0.0" }]), TestContext.Current.CancellationToken));
+		exception.StatusCode.ShouldBe(System.Net.HttpStatusCode.BadRequest);
 	}
 
 	[Fact]
@@ -50,12 +50,12 @@ public class SettingsServiceTests
 			TestContext.Current.CancellationToken);
 
 		var stored = repository.Stored.SubnetsFilter;
-		Assert.Equal("10.0.0.0/24", stored[0].Cidr);
-		Assert.Equal("Services", stored[0].Label);
+		stored[0].Cidr.ShouldBe("10.0.0.0/24");
+		stored[0].Label.ShouldBe("Services");
 		// A CIDR-only subnet stays usable: a blank label collapses to null.
-		Assert.Null(stored[1].Label);
+		stored[1].Label.ShouldBeNull();
 
-		Assert.Equal("Services", dto.SubnetsFilter[0].Label);
+		dto.SubnetsFilter[0].Label.ShouldBe("Services");
 	}
 
 	[Fact]
@@ -82,8 +82,8 @@ public class SettingsServiceTests
 			RecordTtlSeconds = 300
 		}), TestContext.Current.CancellationToken);
 
-		Assert.True(dto.Technitium.HasApiToken);
-		Assert.Equal("protected:original", repository.Stored.Technitium.ApiTokenProtected);
+		dto.Technitium.HasApiToken.ShouldBeTrue();
+		repository.Stored.Technitium.ApiTokenProtected.ShouldBe("protected:original");
 	}
 
 	[Fact]
@@ -100,7 +100,7 @@ public class SettingsServiceTests
 			RecordTtlSeconds = 300
 		}), TestContext.Current.CancellationToken);
 
-		Assert.Equal("protected:t0ken", repository.Stored.Technitium.ApiTokenProtected);
+		repository.Stored.Technitium.ApiTokenProtected.ShouldBe("protected:t0ken");
 	}
 
 	[Fact]
@@ -108,15 +108,14 @@ public class SettingsServiceTests
 	{
 		var (service, _) = Build();
 
-		var exception = await Assert.ThrowsAsync<HttpException>(
-			() => service.UpdateAsync(Write(new TechnitiumWriteDto
+		var exception = await Should.ThrowAsync<HttpException>(() => service.UpdateAsync(Write(new TechnitiumWriteDto
 			{
 				Enabled = true,
 				BaseUrl = "http://dns.example",
 				Zone = "lan.example",
 				RecordTtlSeconds = 300
 			}), TestContext.Current.CancellationToken));
-		Assert.Equal(System.Net.HttpStatusCode.BadRequest, exception.StatusCode);
+		exception.StatusCode.ShouldBe(System.Net.HttpStatusCode.BadRequest);
 	}
 
 	private sealed class FakeSettingsRepository(AppSettings stored) : ISettingsRepository

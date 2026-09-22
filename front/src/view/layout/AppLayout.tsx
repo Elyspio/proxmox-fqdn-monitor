@@ -1,6 +1,6 @@
 import { AppBar, Box, Button, Container, Tab, Tabs, Toolbar, Typography } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router";
 import { useSnackbar } from "notistack";
 import { useAppAuth } from "@/core/auth/AuthProvider";
 import { useCollectNow } from "@/core/api/mutations";
@@ -69,7 +69,12 @@ export function AppLayout() {
 						</Button>
 						<ThemeToggle />
 						{auth.name && (
-							<Typography variant="body2" color="text.secondary">
+							<Typography
+								variant="body2"
+								sx={{
+									color: "text.secondary",
+								}}
+							>
 								{auth.name}
 							</Typography>
 						)}

@@ -9,7 +9,15 @@ import { Loading } from "@/view/components/Common";
 
 function Centered({ children }: { children: ReactNode }) {
 	return (
-		<Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", bgcolor: "background.default", p: 3 }}>
+		<Box
+			sx={{
+				minHeight: "100vh",
+				display: "grid",
+				placeItems: "center",
+				bgcolor: "background.default",
+				p: 3,
+			}}
+		>
 			<Paper sx={{ p: 4, maxWidth: 560 }}>{children}</Paper>
 		</Box>
 	);
@@ -70,9 +78,13 @@ export function Gate({ children }: { children: ReactNode }) {
 					<Typography variant="h5" sx={{ fontWeight: 700 }}>
 						Proxmox IP Monitor
 					</Typography>
-					<Typography color="text.secondary">
-						Cette application expose des jetons d&apos;hyperviseur et pilote une zone DNS. Une connexion
-						est requise.
+					<Typography
+						sx={{
+							color: "text.secondary",
+						}}
+					>
+						Cette application expose des jetons d&apos;hyperviseur et pilote une zone
+						DNS. Une connexion est requise.
 					</Typography>
 					<Button variant="contained" onClick={auth.signIn}>
 						Se connecter
@@ -89,8 +101,9 @@ export function Gate({ children }: { children: ReactNode }) {
 			<Centered>
 				<Alert severity="warning">
 					<AlertTitle>Accès refusé</AlertTitle>
-					Votre compte est authentifié mais ne porte pas le rôle requis. Demandez l&apos;attribution du
-					rôle d&apos;administration de cette application dans Keycloak.
+					Votre compte est authentifié mais ne porte pas le rôle requis. Demandez
+					l&apos;attribution du rôle d&apos;administration de cette application dans
+					Keycloak.
 				</Alert>
 				<Button sx={{ mt: 2 }} onClick={auth.signOut}>
 					Changer de compte

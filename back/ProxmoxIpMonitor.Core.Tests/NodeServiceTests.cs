@@ -5,6 +5,7 @@ using ProxmoxIpMonitor.Abstractions.Models;
 using ProxmoxIpMonitor.Abstractions.Technical;
 using ProxmoxIpMonitor.Abstractions.Transports;
 using ProxmoxIpMonitor.Core.Services;
+using Shouldly;
 using Xunit;
 
 namespace ProxmoxIpMonitor.Core.Tests;
@@ -38,8 +39,8 @@ public class NodeServiceTests
 	{
 		var (service, _, _, _) = Build();
 
-		var exception = await Assert.ThrowsAsync<HttpException>(() => service.CreateAsync(Write(), TestContext.Current.CancellationToken));
-		Assert.Equal(System.Net.HttpStatusCode.BadRequest, exception.StatusCode);
+		var exception = await Should.ThrowAsync<HttpException>(() => service.CreateAsync(Write(), TestContext.Current.CancellationToken));
+		exception.StatusCode.ShouldBe(System.Net.HttpStatusCode.BadRequest);
 	}
 
 	[Fact]
@@ -49,8 +50,8 @@ public class NodeServiceTests
 
 		var dto = await service.CreateAsync(Write("s3cret"), TestContext.Current.CancellationToken);
 
-		Assert.True(dto.HasToken);
-		Assert.Equal("protected:s3cret", nodes.Stored.Single().TokenSecretProtected);
+		dto.HasToken.ShouldBeTrue();
+		nodes.Stored.Single().TokenSecretProtected.ShouldBe("protected:s3cret");
 	}
 
 	[Fact]
@@ -69,8 +70,8 @@ public class NodeServiceTests
 
 		var dto = await service.UpdateAsync("n1", Write(), TestContext.Current.CancellationToken);
 
-		Assert.True(dto.HasToken);
-		Assert.Equal("protected:original", nodes.Stored.Single().TokenSecretProtected);
+		dto.HasToken.ShouldBeTrue();
+		nodes.Stored.Single().TokenSecretProtected.ShouldBe("protected:original");
 	}
 
 	[Fact]
@@ -89,8 +90,8 @@ public class NodeServiceTests
 
 		await service.DeleteAsync("n1", TestContext.Current.CancellationToken);
 
-		Assert.Empty(nodes.Stored);
-		Assert.Equal(["n1"], hosts.DeletedNodeIds);
+		nodes.Stored.ShouldBeEmpty();
+		hosts.DeletedNodeIds.ShouldBe(["n1"]);
 	}
 
 	[Fact]
@@ -98,8 +99,8 @@ public class NodeServiceTests
 	{
 		var (service, _, _, _) = Build();
 
-		var exception = await Assert.ThrowsAsync<HttpException>(() => service.TestAsync(Write(), null, TestContext.Current.CancellationToken));
-		Assert.Equal(System.Net.HttpStatusCode.BadRequest, exception.StatusCode);
+		var exception = await Should.ThrowAsync<HttpException>(() => service.TestAsync(Write(), null, TestContext.Current.CancellationToken));
+		exception.StatusCode.ShouldBe(System.Net.HttpStatusCode.BadRequest);
 	}
 
 	[Fact]
@@ -109,8 +110,8 @@ public class NodeServiceTests
 
 		var result = await service.TestAsync(Write("s3cret"), null, TestContext.Current.CancellationToken);
 
-		Assert.True(result.Success);
-		Assert.StartsWith("test-", pve.LastTested!.Id);
+		result.Success.ShouldBeTrue();
+		pve.LastTested!.Id.ShouldStartWith("test-");
 	}
 
 	private sealed class FakeNodeRepository(IEnumerable<PveNode> seed) : INodeRepository
