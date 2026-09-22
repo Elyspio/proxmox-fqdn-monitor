@@ -30,7 +30,7 @@ is what inflated the primary zone's IXFR history. Stale records are removed expl
 
 ## Requirements
 
-- .NET 10 SDK, pnpm 11, Docker (for the Aspire services). Node 24 matches the container build.
+- .NET 10 SDK, pnpm 12, Docker (for the Aspire services). Node 24 matches the container build.
 - MongoDB.
 - A Keycloak realm. Every route, reads included, requires a realm role — see below.
 - One Proxmox API token per node.
@@ -95,7 +95,8 @@ dotnet test back/ProxmoxIpMonitor.slnx
 cd front
 pnpm install --frozen-lockfile
 pnpm dev
-pnpm check      # runs `vp check --fix`; it mutates files, review the diff
+pnpm check      # `vp check`: format, lint and type check (read-only)
+pnpm fmt        # `vp fmt` rewrites files; review the diff
 pnpm test
 pnpm build
 ```

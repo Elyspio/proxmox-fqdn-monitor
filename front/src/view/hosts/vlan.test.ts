@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { MonitoredHost, Subnet } from "@/core/api/types";
 import { buildVlanGroups, ipInCidr, matchSubnet } from "./vlan";
 

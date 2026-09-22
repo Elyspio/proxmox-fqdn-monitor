@@ -106,7 +106,8 @@ dotnet test back/ProxmoxIpMonitor.slnx
 ```bash
 cd front
 pnpm install --frozen-lockfile
-pnpm check    # `vp check --fix` mutates files; review the diff
+pnpm check    # `vp check`: format, lint and type check (read-only)
+pnpm fmt      # `vp fmt` rewrites files; review the diff
 pnpm test
 pnpm build
 ```
