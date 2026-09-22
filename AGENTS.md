@@ -28,7 +28,7 @@ front/
 deploy/build/    Single-container image and deployment script
 ```
 
-Backend: .NET 10, ASP.NET Core, Aspire 13, MongoDB, xUnit v3.
+Backend: .NET 10, ASP.NET Core, Aspire 13, MongoDB, xUnit v3 (Microsoft.Testing.Platform) with Shouldly assertions.
 Frontend: React 19, TypeScript, Vite+, MUI 9, TanStack Query, Axios, `react-oidc-context`, Vitest.
 
 ## Invariants

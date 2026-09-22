@@ -1,4 +1,5 @@
 using ProxmoxIpMonitor.Abstractions;
+using Shouldly;
 using Xunit;
 
 namespace ProxmoxIpMonitor.Core.Tests;
@@ -16,7 +17,7 @@ public class SubnetFilterTests
 	[InlineData("10.0.0.0/32", "10.0.0.1", false)]
 	public void MatchesCidrRanges(string cidr, string ip, bool expected)
 	{
-		Assert.Equal(expected, SubnetFilter.IsIn(cidr, ip));
+		SubnetFilter.IsIn(cidr, ip).ShouldBe(expected);
 	}
 
 	[Theory]
@@ -25,7 +26,7 @@ public class SubnetFilterTests
 	public void Ipv6IsRejected(string ip)
 	{
 		// Only A records are ever written, so an IPv6 address is never a usable answer.
-		Assert.False(SubnetFilter.IsIn("10.0.0.0/8", ip));
+		SubnetFilter.IsIn("10.0.0.0/8", ip).ShouldBeFalse();
 	}
 
 	[Theory]
@@ -35,13 +36,13 @@ public class SubnetFilterTests
 	[InlineData("", "10.0.0.1")]
 	public void MalformedInputIsRejectedRatherThanThrowing(string cidr, string ip)
 	{
-		Assert.False(SubnetFilter.IsIn(cidr, ip));
+		SubnetFilter.IsIn(cidr, ip).ShouldBeFalse();
 	}
 
 	[Fact]
 	public void AnyMatchingRangeIsEnough()
 	{
-		Assert.True(SubnetFilter.IsInAny(["192.168.0.0/16", "10.0.0.0/8"], "10.0.10.5"));
-		Assert.False(SubnetFilter.IsInAny(["192.168.0.0/16", "172.16.0.0/12"], "10.0.10.5"));
+		SubnetFilter.IsInAny(["192.168.0.0/16", "10.0.0.0/8"], "10.0.10.5").ShouldBeTrue();
+		SubnetFilter.IsInAny(["192.168.0.0/16", "172.16.0.0/12"], "10.0.10.5").ShouldBeFalse();
 	}
 }

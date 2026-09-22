@@ -2,6 +2,7 @@ using System.Web;
 using Microsoft.Extensions.Logging.Abstractions;
 using ProxmoxIpMonitor.Abstractions.Models;
 using ProxmoxIpMonitor.Adapters.Dns.Technitium;
+using Shouldly;
 using Xunit;
 
 namespace ProxmoxIpMonitor.Adapters.Tests;
@@ -76,15 +77,15 @@ public class TechnitiumDnsProviderTests
 
 		await provider.ReconcileAsync(Settings(), [new DesiredRecord("web-01", "10.0.10.5")], false, Ct);
 
-		var add = Assert.Single(handler.Requests, r => r.Path.EndsWith("records/add"));
+		var add = handler.Requests.Where(r => r.Path.EndsWith("records/add")).ShouldHaveSingleItem();
 		var form = FormOf(add);
 
-		Assert.Equal(Marker, form["comments"]);
-		Assert.Equal("web-01.elylan", form["domain"]);
-		Assert.Equal("10.0.10.5", form["ipAddress"]);
-		Assert.Equal("300", form["ttl"]);
-		Assert.Equal("true", form["overwrite"]);
-		Assert.Equal("ely-dns-01.elylan", form["node"]);
+		form["comments"].ShouldBe(Marker);
+		form["domain"].ShouldBe("web-01.elylan");
+		form["ipAddress"].ShouldBe("10.0.10.5");
+		form["ttl"].ShouldBe("300");
+		form["overwrite"].ShouldBe("true");
+		form["node"].ShouldBe("ely-dns-01.elylan");
 	}
 
 	[Fact]
@@ -96,8 +97,8 @@ public class TechnitiumDnsProviderTests
 
 		await provider.ReconcileAsync(Settings(), [new DesiredRecord("web-01", "10.0.10.5")], false, Ct);
 
-		var add = Assert.Single(handler.Requests, r => r.Path.EndsWith("records/add"));
-		Assert.DoesNotContain("expiryTtl", FormOf(add).Keys);
+		var add = handler.Requests.Where(r => r.Path.EndsWith("records/add")).ShouldHaveSingleItem();
+		FormOf(add).Keys.ShouldNotContain("expiryTtl");
 	}
 
 	[Fact]
@@ -107,9 +108,9 @@ public class TechnitiumDnsProviderTests
 
 		var push = await provider.ReconcileAsync(Settings(), [new DesiredRecord("web-01", "10.0.10.5")], false, Ct);
 
-		Assert.Equal(1, push.Skipped);
-		Assert.Equal(0, push.Written);
-		Assert.DoesNotContain(handler.Requests, r => r.Path.EndsWith("records/add"));
+		push.Skipped.ShouldBe(1);
+		push.Written.ShouldBe(0);
+		handler.Requests.ShouldNotContain(r => r.Path.EndsWith("records/add"));
 	}
 
 	[Fact]
@@ -121,9 +122,9 @@ public class TechnitiumDnsProviderTests
 
 		var push = await provider.ReconcileAsync(Settings(), [new DesiredRecord("web-01", "10.0.10.5")], false, Ct);
 
-		Assert.Equal(1, push.Written);
-		var add = Assert.Single(handler.Requests, r => r.Path.EndsWith("records/add"));
-		Assert.Equal(Marker, FormOf(add)["comments"]);
+		push.Written.ShouldBe(1);
+		var add = handler.Requests.Where(r => r.Path.EndsWith("records/add")).ShouldHaveSingleItem();
+		(FormOf(add)["comments"]).ShouldBe(Marker);
 	}
 
 	[Fact]
@@ -133,12 +134,12 @@ public class TechnitiumDnsProviderTests
 
 		var push = await provider.ReconcileAsync(Settings(), [], false, Ct);
 
-		Assert.Equal(1, push.Deleted);
-		var delete = Assert.Single(handler.Requests, r => r.Path.EndsWith("records/delete"));
+		push.Deleted.ShouldBe(1);
+		var delete = handler.Requests.Where(r => r.Path.EndsWith("records/delete")).ShouldHaveSingleItem();
 		var form = FormOf(delete);
-		Assert.Equal("gone.elylan", form["domain"]);
-		Assert.Equal("10.0.10.99", form["ipAddress"]);
-		Assert.Equal("A", form["type"]);
+		form["domain"].ShouldBe("gone.elylan");
+		form["ipAddress"].ShouldBe("10.0.10.99");
+		form["type"].ShouldBe("A");
 	}
 
 	[Fact]
@@ -153,8 +154,8 @@ public class TechnitiumDnsProviderTests
 
 		var push = await provider.ReconcileAsync(Settings(), [], false, Ct);
 
-		Assert.Equal(0, push.Deleted);
-		Assert.DoesNotContain(handler.Requests, r => r.Path.EndsWith("records/delete"));
+		push.Deleted.ShouldBe(0);
+		handler.Requests.ShouldNotContain(r => r.Path.EndsWith("records/delete"));
 	}
 
 	[Fact]
@@ -164,8 +165,8 @@ public class TechnitiumDnsProviderTests
 
 		var state = await provider.InspectAsync(Settings(), [], Ct);
 
-		Assert.Equal("proxy.elylan", Assert.Single(state.Unmanaged).Domain);
-		Assert.Empty(state.Orphans);
+		state.Unmanaged.ShouldHaveSingleItem().Domain.ShouldBe("proxy.elylan");
+		state.Orphans.ShouldBeEmpty();
 	}
 
 	[Fact]
@@ -175,11 +176,11 @@ public class TechnitiumDnsProviderTests
 
 		var push = await provider.ReconcileAsync(Settings(), [new DesiredRecord("web-01", "10.0.10.5")], true, Ct);
 
-		Assert.True(push.DryRun);
-		Assert.Equal(1, push.Written);
-		Assert.Equal(1, push.Deleted);
-		Assert.DoesNotContain(handler.Requests, r => r.Path.EndsWith("records/add"));
-		Assert.DoesNotContain(handler.Requests, r => r.Path.EndsWith("records/delete"));
+		push.DryRun.ShouldBeTrue();
+		push.Written.ShouldBe(1);
+		push.Deleted.ShouldBe(1);
+		handler.Requests.ShouldNotContain(r => r.Path.EndsWith("records/add"));
+		handler.Requests.ShouldNotContain(r => r.Path.EndsWith("records/delete"));
 	}
 
 	[Fact]
@@ -189,8 +190,8 @@ public class TechnitiumDnsProviderTests
 
 		var push = await provider.ReconcileAsync(Settings(deleteOrphans: false), [], false, Ct);
 
-		Assert.Equal(0, push.Deleted);
-		Assert.DoesNotContain(handler.Requests, r => r.Path.EndsWith("records/delete"));
+		push.Deleted.ShouldBe(0);
+		handler.Requests.ShouldNotContain(r => r.Path.EndsWith("records/delete"));
 	}
 
 	[Fact]
@@ -200,7 +201,7 @@ public class TechnitiumDnsProviderTests
 
 		var push = await provider.ReconcileAsync(Settings(), [new DesiredRecord("web-01", "10.0.10.5")], false, Ct);
 
-		Assert.Equal(1, push.Written);
+		push.Written.ShouldBe(1);
 	}
 
 	[Fact]
@@ -218,8 +219,8 @@ public class TechnitiumDnsProviderTests
 
 		var push = await provider.ReconcileAsync(Settings(), [new DesiredRecord("web-01", "10.0.10.5")], false, Ct);
 
-		Assert.Equal(1, push.Failed);
-		Assert.Contains("zone is locked", Assert.Single(push.Errors));
+		push.Failed.ShouldBe(1);
+		push.Errors.ShouldHaveSingleItem().ShouldContain("zone is locked");
 	}
 
 	[Theory]
@@ -229,7 +230,7 @@ public class TechnitiumDnsProviderTests
 	[InlineData("web-01.", "elylan", "web-01.elylan")]
 	public void HostnamesAreQualifiedWithTheZoneExactlyOnce(string hostname, string zone, string expected)
 	{
-		Assert.Equal(expected, TechnitiumDnsProvider.BuildDomainName(hostname, zone));
+		TechnitiumDnsProvider.BuildDomainName(hostname, zone).ShouldBe(expected);
 	}
 
 	[Fact]
@@ -240,7 +241,7 @@ public class TechnitiumDnsProviderTests
 
 		var push = await provider.ReconcileAsync(settings, [new DesiredRecord("web-01", "10.0.10.5")], false, Ct);
 
-		Assert.Empty(handler.Requests);
-		Assert.Single(push.Errors);
+		handler.Requests.ShouldBeEmpty();
+		push.Errors.ShouldHaveSingleItem();
 	}
 }

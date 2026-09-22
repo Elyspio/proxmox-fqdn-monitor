@@ -3,6 +3,7 @@ using MongoDB.Bson.IO;
 using MongoDB.Bson.Serialization;
 using ProxmoxIpMonitor.Abstractions.Models;
 using ProxmoxIpMonitor.Adapters.MongoDB.Mongo;
+using Shouldly;
 using Xunit;
 
 namespace ProxmoxIpMonitor.Adapters.Tests;
@@ -41,8 +42,8 @@ public class SubnetBsonSerializerTests
 	{
 		var subnet = Deserialize("10.0.0.0/8");
 
-		Assert.Equal("10.0.0.0/8", subnet.Cidr);
-		Assert.Null(subnet.Label);
+		subnet.Cidr.ShouldBe("10.0.0.0/8");
+		subnet.Label.ShouldBeNull();
 	}
 
 	[Fact]
@@ -52,8 +53,8 @@ public class SubnetBsonSerializerTests
 
 		var subnet = Deserialize(stored);
 
-		Assert.Equal("10.0.0.0/24", subnet.Cidr);
-		Assert.Equal("Services", subnet.Label);
+		subnet.Cidr.ShouldBe("10.0.0.0/24");
+		subnet.Label.ShouldBe("Services");
 	}
 
 	[Fact]
@@ -63,8 +64,8 @@ public class SubnetBsonSerializerTests
 
 		var subnet = Deserialize(stored);
 
-		Assert.Equal("10.0.1.0/24", subnet.Cidr);
-		Assert.Null(subnet.Label);
+		subnet.Cidr.ShouldBe("10.0.1.0/24");
+		subnet.Label.ShouldBeNull();
 	}
 
 	[Fact]
@@ -75,8 +76,8 @@ public class SubnetBsonSerializerTests
 
 		var subnet = Deserialize(stored);
 
-		Assert.Equal("10.0.3.0/24", subnet.Cidr);
-		Assert.Equal("Legacy", subnet.Label);
+		subnet.Cidr.ShouldBe("10.0.3.0/24");
+		subnet.Label.ShouldBe("Legacy");
 	}
 
 	[Fact]
@@ -84,8 +85,8 @@ public class SubnetBsonSerializerTests
 	{
 		var document = Serialize(new Subnet { Cidr = "10.0.2.0/24" });
 
-		Assert.Equal("10.0.2.0/24", document["Cidr"].AsString);
-		Assert.False(document.Contains("Label"));
+		document["Cidr"].AsString.ShouldBe("10.0.2.0/24");
+		document.Contains("Label").ShouldBeFalse();
 	}
 
 	[Fact]
@@ -95,6 +96,6 @@ public class SubnetBsonSerializerTests
 
 		var restored = Deserialize(Serialize(original));
 
-		Assert.Equal(original, restored);
+		restored.ShouldBe(original);
 	}
 }
