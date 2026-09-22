@@ -30,7 +30,7 @@ is what inflated the primary zone's IXFR history. Stale records are removed expl
 
 ## Requirements
 
-- .NET 10 SDK, pnpm 12, Docker (for the Aspire services). Node 24 matches the container build.
+- .NET 10 SDK, pnpm 12, Docker (for the Aspire services). Node 26 matches the container build.
 - MongoDB.
 - A Keycloak realm. Every route, reads included, requires a realm role — see below.
 - One Proxmox API token per node.
