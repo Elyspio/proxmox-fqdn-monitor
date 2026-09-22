@@ -184,7 +184,12 @@ function StatPill({ color, count, label }: { color: string; count: number; label
 			<Typography component="span" sx={{ fontWeight: 700 }}>
 				{count}
 			</Typography>
-			<Typography component="span" color="text.secondary">
+			<Typography
+				component="span"
+				sx={{
+					color: "text.secondary",
+				}}
+			>
 				{label}
 			</Typography>
 		</Stack>
@@ -195,8 +200,12 @@ function SectionLabel({ children }: { children: ReactNode }) {
 	return (
 		<Typography
 			variant="overline"
-			color="text.secondary"
-			sx={{ display: "block", letterSpacing: 1, mb: 1 }}
+			sx={{
+				color: "text.secondary",
+				display: "block",
+				letterSpacing: 1,
+				mb: 1,
+			}}
 		>
 			{children}
 		</Typography>
@@ -227,7 +236,17 @@ function HypervisorRow({ node }: { node: MonitoredHost }) {
 			/>
 			<Mono>{node.hostname}</Mono>
 			<Box sx={{ flexGrow: 1 }} />
-			{node.ip ? <Mono>{node.ip}</Mono> : <Typography color="text.secondary">—</Typography>}
+			{node.ip ? (
+				<Mono>{node.ip}</Mono>
+			) : (
+				<Typography
+					sx={{
+						color: "text.secondary",
+					}}
+				>
+					—
+				</Typography>
+			)}
 			<StatusChip host={node} />
 		</Box>
 	);
@@ -249,7 +268,12 @@ function groupHeader(group: VlanGroup): { badge: string | null; title: ReactNode
 				)}
 			</>
 		) : (
-			<Typography component="span" color="text.secondary">
+			<Typography
+				component="span"
+				sx={{
+					color: "text.secondary",
+				}}
+			>
 				Sous-réseau non configuré
 			</Typography>
 		),
@@ -354,11 +378,23 @@ function HostRow({
 				{host.ip ? (
 					<Mono>{host.ip}</Mono>
 				) : (
-					<Typography color="text.secondary">—</Typography>
+					<Typography
+						sx={{
+							color: "text.secondary",
+						}}
+					>
+						—
+					</Typography>
 				)}
 			</Box>
 
-			<Typography variant="body2" color="text.secondary" sx={{ textAlign: "right" }}>
+			<Typography
+				variant="body2"
+				sx={{
+					color: "text.secondary",
+					textAlign: "right",
+				}}
+			>
 				{host.vmId}
 			</Typography>
 
