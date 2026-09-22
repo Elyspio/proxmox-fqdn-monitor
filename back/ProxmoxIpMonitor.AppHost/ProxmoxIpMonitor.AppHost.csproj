@@ -1,13 +1,13 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.4.6">
+<Project Sdk="Aspire.AppHost.Sdk/13.5.4">
 
 	<ItemGroup>
 		<ProjectReference Include="..\ProxmoxIpMonitor.Web\ProxmoxIpMonitor.Web.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Aspire.Hosting.JavaScript" Version="13.4.6"/>
-		<PackageReference Include="Aspire.Hosting.Keycloak" Version="13.4.6-preview.1.26319.6"/>
-		<PackageReference Include="Aspire.Hosting.MongoDB" Version="13.4.6"/>
+		<PackageReference Include="Aspire.Hosting.JavaScript" Version="13.5.4"/>
+		<PackageReference Include="Aspire.Hosting.Keycloak" Version="13.5.4-preview.1.26464.4"/>
+		<PackageReference Include="Aspire.Hosting.MongoDB" Version="13.5.4"/>
 	</ItemGroup>
 
 	<PropertyGroup>
@@ -16,6 +16,9 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<UserSecretsId>0b5d7c2e-3f41-4a86-9d52-7c1e4b8a9f30</UserSecretsId>
+		<!-- Aspire 13.5 warns while DCP and the dashboard still come from NuGet packages rather than the
+		     Aspire CLI bundle. Keeping the packages lets `dotnet build` work without the CLI installed. -->
+		<NoWarn>$(NoWarn);ASPIRE010</NoWarn>
 	</PropertyGroup>
 
 </Project>
