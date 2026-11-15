@@ -1,5 +1,4 @@
-using Elyspio.Utils.Telemetry.Technical.Helpers;
-using Elyspio.Utils.Telemetry.Tracing.Elements;
+using Elyspio.Utils.Telemetry;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using ProxmoxIpMonitor.Abstractions.Interfaces;
@@ -12,11 +11,11 @@ namespace ProxmoxIpMonitor.Adapters.MongoDB.Repositories;
 ///     Single-document settings store. The document is created on first read so a fresh
 ///     deployment boots into a usable, empty state instead of failing on a missing config.
 /// </summary>
-public sealed class SettingsRepository(MongoContext context, ILogger<SettingsRepository> logger) : TracingRepository(logger), ISettingsRepository
+public sealed class SettingsRepository(MongoContext context, ILogger<SettingsRepository> logger) : ISettingsRepository
 {
 	public async Task<AppSettings> GetAsync(CancellationToken ct = default)
 	{
-		using var trace = LogRepository();
+		using var trace = logger.Trace();
 
 		var filter = Builders<AppSettings>.Filter.Eq(settings => settings.Id, AppSettings.SingletonId);
 		var stored = await context.Settings.Find(filter).FirstOrDefaultAsync(ct);
@@ -29,7 +28,7 @@ public sealed class SettingsRepository(MongoContext context, ILogger<SettingsRep
 
 	public async Task<AppSettings> SaveAsync(AppSettings settings, CancellationToken ct = default)
 	{
-		using var trace = LogRepository();
+		using var trace = logger.Trace();
 
 		var toStore = settings with { Id = AppSettings.SingletonId };
 		var filter = Builders<AppSettings>.Filter.Eq(s => s.Id, AppSettings.SingletonId);

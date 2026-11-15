@@ -1,5 +1,4 @@
-using Elyspio.Utils.Telemetry.Technical.Helpers;
-using Elyspio.Utils.Telemetry.Tracing.Elements;
+using Elyspio.Utils.Telemetry;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using ProxmoxIpMonitor.Abstractions.Interfaces;
@@ -8,11 +7,11 @@ using ProxmoxIpMonitor.Adapters.MongoDB.Mongo;
 
 namespace ProxmoxIpMonitor.Adapters.MongoDB.Repositories;
 
-public sealed class HostRepository(MongoContext context, ILogger<HostRepository> logger) : TracingRepository(logger), IHostRepository
+public sealed class HostRepository(MongoContext context, ILogger<HostRepository> logger) : IHostRepository
 {
 	public async Task<IReadOnlyList<MonitoredHost>> GetAllAsync(CancellationToken ct = default)
 	{
-		using var trace = LogRepository();
+		using var trace = logger.Trace();
 
 		return await context.Hosts.Find(FilterDefinition<MonitoredHost>.Empty)
 			.SortBy(host => host.Hostname)
@@ -21,14 +20,14 @@ public sealed class HostRepository(MongoContext context, ILogger<HostRepository>
 
 	public async Task<MonitoredHost?> GetAsync(string key, CancellationToken ct = default)
 	{
-		using var trace = LogRepository($"{Log.F(key)}");
+		using var trace = logger.Trace($"{Log.F(key)}");
 
 		return await context.Hosts.Find(host => host.Key == key).FirstOrDefaultAsync(ct);
 	}
 
 	public async Task UpsertManyAsync(IReadOnlyCollection<MonitoredHost> hosts, CancellationToken ct = default)
 	{
-		using var trace = LogRepository($"{Log.F(hosts.Count)}");
+		using var trace = logger.Trace($"{Log.F(hosts.Count)}");
 
 		if (hosts.Count == 0) return;
 
@@ -43,7 +42,7 @@ public sealed class HostRepository(MongoContext context, ILogger<HostRepository>
 
 	public async Task DeleteManyAsync(IReadOnlyCollection<string> keys, CancellationToken ct = default)
 	{
-		using var trace = LogRepository($"{Log.F(keys.Count)}");
+		using var trace = logger.Trace($"{Log.F(keys.Count)}");
 
 		if (keys.Count == 0) return;
 		await context.Hosts.DeleteManyAsync(host => keys.Contains(host.Key), ct);
@@ -51,7 +50,7 @@ public sealed class HostRepository(MongoContext context, ILogger<HostRepository>
 
 	public async Task DeleteByNodeAsync(string nodeId, CancellationToken ct = default)
 	{
-		using var trace = LogRepository($"{Log.F(nodeId)}");
+		using var trace = logger.Trace($"{Log.F(nodeId)}");
 
 		await context.Hosts.DeleteManyAsync(host => host.NodeId == nodeId, ct);
 	}

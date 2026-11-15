@@ -1,6 +1,5 @@
+using Elyspio.Utils.Telemetry;
 using System.Diagnostics;
-using Elyspio.Utils.Telemetry.Technical.Helpers;
-using Elyspio.Utils.Telemetry.Tracing.Elements;
 using Microsoft.Extensions.Logging;
 using ProxmoxIpMonitor.Abstractions.Interfaces;
 using ProxmoxIpMonitor.Abstractions.Models;
@@ -17,7 +16,7 @@ namespace ProxmoxIpMonitor.Adapters.Dns.Technitium;
 public sealed class TechnitiumDnsProvider(
 	IHttpClientFactory httpClientFactory,
 	ISecretProtector protector,
-	ILogger<TechnitiumDnsProvider> logger) : TracingAdapter(logger), IDnsProvider
+	ILogger<TechnitiumDnsProvider> logger) : IDnsProvider
 {
 	/// <summary>Written into every managed record's comments field. Changing it orphans the existing zone.</summary>
 	public const string OwnershipMarker = "proxmox-ip-monitor";
@@ -26,7 +25,7 @@ public sealed class TechnitiumDnsProvider(
 
 	public bool IsEnabled(AppSettings settings)
 	{
-		using var trace = LogAdapter();
+		using var trace = logger.Trace();
 
 		var technitium = settings.Technitium;
 		return technitium.Enabled
@@ -38,7 +37,7 @@ public sealed class TechnitiumDnsProvider(
 	/// <inheritdoc />
 	public async Task<DnsState> InspectAsync(AppSettings settings, IReadOnlyCollection<DesiredRecord> desired, CancellationToken ct = default)
 	{
-		using var trace = LogAdapter($"{Log.F(settings.Technitium.Zone)} {Log.F(desired.Count)}");
+		using var trace = logger.Trace($"{Log.F(settings.Technitium.Zone)} {Log.F(desired.Count)}");
 
 		if (!IsEnabled(settings))
 			return new DnsState { Enabled = false, Zone = settings.Technitium.Zone };
@@ -66,7 +65,7 @@ public sealed class TechnitiumDnsProvider(
 	/// <inheritdoc />
 	public async Task<DnsPush> ReconcileAsync(AppSettings settings, IReadOnlyCollection<DesiredRecord> desired, bool dryRun, CancellationToken ct = default)
 	{
-		using var trace = LogAdapter($"{Log.F(settings.Technitium.Zone)} {Log.F(desired.Count)} {Log.F(dryRun)}");
+		using var trace = logger.Trace($"{Log.F(settings.Technitium.Zone)} {Log.F(desired.Count)} {Log.F(dryRun)}");
 
 		var startedAt = DateTime.UtcNow;
 		var stopwatch = Stopwatch.GetTimestamp();

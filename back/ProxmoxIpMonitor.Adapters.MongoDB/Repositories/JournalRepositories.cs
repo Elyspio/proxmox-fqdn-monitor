@@ -1,5 +1,4 @@
-using Elyspio.Utils.Telemetry.Technical.Helpers;
-using Elyspio.Utils.Telemetry.Tracing.Elements;
+using Elyspio.Utils.Telemetry;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using ProxmoxIpMonitor.Abstractions.Interfaces;
@@ -9,11 +8,11 @@ using ProxmoxIpMonitor.Adapters.MongoDB.Mongo;
 namespace ProxmoxIpMonitor.Adapters.MongoDB.Repositories;
 
 /// <summary>Append-only history of address changes. Bounded by the TTL index, never updated.</summary>
-public sealed class IpEventRepository(MongoContext context, ILogger<IpEventRepository> logger) : TracingRepository(logger), IIpEventRepository
+public sealed class IpEventRepository(MongoContext context, ILogger<IpEventRepository> logger) : IIpEventRepository
 {
 	public async Task AppendManyAsync(IReadOnlyCollection<IpEvent> events, CancellationToken ct = default)
 	{
-		using var trace = LogRepository($"{Log.F(events.Count)}");
+		using var trace = logger.Trace($"{Log.F(events.Count)}");
 
 		if (events.Count == 0) return;
 		await context.IpEvents.InsertManyAsync(events, new InsertManyOptions { IsOrdered = false }, ct);
@@ -21,7 +20,7 @@ public sealed class IpEventRepository(MongoContext context, ILogger<IpEventRepos
 
 	public async Task<Page<IpEvent>> QueryAsync(IpEventQuery query, CancellationToken ct = default)
 	{
-		using var trace = LogRepository($"{Log.F(query)}");
+		using var trace = logger.Trace($"{Log.F(query)}");
 
 		var builder = Builders<IpEvent>.Filter;
 		var filter = builder.Empty;
@@ -44,18 +43,18 @@ public sealed class IpEventRepository(MongoContext context, ILogger<IpEventRepos
 	}
 }
 
-public sealed class CollectionRunRepository(MongoContext context, ILogger<CollectionRunRepository> logger) : TracingRepository(logger), ICollectionRunRepository
+public sealed class CollectionRunRepository(MongoContext context, ILogger<CollectionRunRepository> logger) : ICollectionRunRepository
 {
 	public async Task AppendAsync(CollectionRun run, CancellationToken ct = default)
 	{
-		using var trace = LogRepository($"{Log.F(run.NodeName)}");
+		using var trace = logger.Trace($"{Log.F(run.NodeName)}");
 
 		await context.CollectionRuns.InsertOneAsync(run, cancellationToken: ct);
 	}
 
 	public async Task<IReadOnlyList<CollectionRun>> GetLatestPerNodeAsync(CancellationToken ct = default)
 	{
-		using var trace = LogRepository();
+		using var trace = logger.Trace();
 
 		// One document per node, newest first. Small collection after TTL expiry, so a sort
 		// plus in-memory grouping beats an aggregation pipeline in readability here.
@@ -69,7 +68,7 @@ public sealed class CollectionRunRepository(MongoContext context, ILogger<Collec
 
 	public async Task<IReadOnlyList<CollectionRun>> GetRecentAsync(string nodeId, int take, CancellationToken ct = default)
 	{
-		using var trace = LogRepository($"{Log.F(nodeId)} {Log.F(take)}");
+		using var trace = logger.Trace($"{Log.F(nodeId)} {Log.F(take)}");
 
 		return await context.CollectionRuns.Find(run => run.NodeId == nodeId)
 			.SortByDescending(run => run.StartedAt)
@@ -78,18 +77,18 @@ public sealed class CollectionRunRepository(MongoContext context, ILogger<Collec
 	}
 }
 
-public sealed class DnsPushRepository(MongoContext context, ILogger<DnsPushRepository> logger) : TracingRepository(logger), IDnsPushRepository
+public sealed class DnsPushRepository(MongoContext context, ILogger<DnsPushRepository> logger) : IDnsPushRepository
 {
 	public async Task AppendAsync(DnsPush push, CancellationToken ct = default)
 	{
-		using var trace = LogRepository($"{Log.F(push.DryRun)}");
+		using var trace = logger.Trace($"{Log.F(push.DryRun)}");
 
 		await context.DnsPushes.InsertOneAsync(push, cancellationToken: ct);
 	}
 
 	public async Task<IReadOnlyList<DnsPush>> GetRecentAsync(int take, CancellationToken ct = default)
 	{
-		using var trace = LogRepository($"{Log.F(take)}");
+		using var trace = logger.Trace($"{Log.F(take)}");
 
 		return await context.DnsPushes.Find(FilterDefinition<DnsPush>.Empty)
 			.SortByDescending(push => push.At)

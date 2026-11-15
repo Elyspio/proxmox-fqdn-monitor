@@ -1,7 +1,6 @@
+using Elyspio.Utils.Telemetry;
 using System.Collections.Concurrent;
 using System.Net.Http.Headers;
-using Elyspio.Utils.Telemetry.Technical.Helpers;
-using Elyspio.Utils.Telemetry.Tracing.Elements;
 using Microsoft.Extensions.Logging;
 using ProxmoxIpMonitor.Abstractions.Models;
 
@@ -20,13 +19,13 @@ public interface IPveHttpClientProvider
 ///     the handler, so editing a node's URL or TLS flag transparently yields a fresh client.
 /// </summary>
 public sealed class PveHttpClientProvider(ILogger<PveHttpClientProvider> logger)
-	: TracingAdapter(logger), IPveHttpClientProvider, IDisposable
+	: IPveHttpClientProvider, IDisposable
 {
 	private readonly ConcurrentDictionary<string, HttpClient> _clients = new();
 
 	public void Dispose()
 	{
-		using var trace = LogAdapter();
+		using var trace = logger.Trace();
 
 		foreach (var client in _clients.Values) client.Dispose();
 		_clients.Clear();
@@ -34,7 +33,7 @@ public sealed class PveHttpClientProvider(ILogger<PveHttpClientProvider> logger)
 
 	public HttpClient Get(PveNode node)
 	{
-		using var trace = LogAdapter($"{Log.F(node.DisplayName)}");
+		using var trace = logger.Trace($"{Log.F(node.DisplayName)}");
 
 		var key = $"{node.Id}|{node.BaseUrl}|{node.AllowInvalidCertificate}";
 		return _clients.GetOrAdd(key, _ => Create(node));

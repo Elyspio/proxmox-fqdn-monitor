@@ -1,5 +1,5 @@
+using Elyspio.Utils.Telemetry;
 using System.Diagnostics;
-using Elyspio.Utils.Telemetry.Tracing.Elements;
 using Microsoft.Extensions.Logging;
 using ProxmoxIpMonitor.Abstractions.Interfaces;
 using ProxmoxIpMonitor.Abstractions.Models;
@@ -21,14 +21,14 @@ public sealed class Collector(
 	ISettingsRepository settingsRepository,
 	IPveClient pveClient,
 	IEnumerable<IDnsProvider> dnsProviders,
-	ILogger<Collector> logger) : TracingService(logger), ICollector
+	ILogger<Collector> logger) : ICollector
 {
 	private readonly SemaphoreSlim _gate = new(1, 1);
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<CollectionRun>> CollectNowAsync(CancellationToken ct = default)
 	{
-		using var trace = LogService();
+		using var trace = logger.Trace();
 
 		await _gate.WaitAsync(ct);
 		try
@@ -46,7 +46,7 @@ public sealed class Collector(
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<DnsPush>> PushDnsAsync(CancellationToken ct = default)
 	{
-		using var trace = LogService();
+		using var trace = logger.Trace();
 
 		await _gate.WaitAsync(ct);
 		try
@@ -62,7 +62,7 @@ public sealed class Collector(
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<DnsState>> InspectDnsAsync(CancellationToken ct = default)
 	{
-		using var trace = LogService();
+		using var trace = logger.Trace();
 
 		// Read-only: deliberately not gated, so opening the DNS screen never waits on a poll.
 		var settings = await settingsRepository.GetAsync(ct);
