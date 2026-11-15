@@ -1,5 +1,6 @@
 using ProxmoxIpMonitor.Abstractions.Models;
 using ProxmoxIpMonitor.Core.Services;
+using Shouldly;
 using Xunit;
 
 namespace ProxmoxIpMonitor.Core.Tests;
@@ -31,7 +32,7 @@ public class DesiredRecordBuilderTests
 	{
 		var records = DesiredRecordBuilder.Build([Host("web-01", null, Now)], new AppSettings());
 
-		Assert.Empty(records);
+		records.ShouldBeEmpty();
 	}
 
 	[Fact]
@@ -41,7 +42,7 @@ public class DesiredRecordBuilderTests
 
 		var records = DesiredRecordBuilder.Build(hosts, new AppSettings());
 
-		Assert.Equal("web-02", Assert.Single(records).Domain);
+		records.ShouldHaveSingleItem().Domain.ShouldBe("web-02");
 	}
 
 	[Fact]
@@ -51,7 +52,7 @@ public class DesiredRecordBuilderTests
 
 		var records = DesiredRecordBuilder.Build([Host("web-01", "10.0.10.5", Now)], settings);
 
-		Assert.Empty(records);
+		records.ShouldBeEmpty();
 	}
 
 	[Fact]
@@ -67,6 +68,6 @@ public class DesiredRecordBuilderTests
 
 		var records = DesiredRecordBuilder.Build(hosts, new AppSettings());
 
-		Assert.Equal("10.0.10.9", Assert.Single(records).Ip);
+		records.ShouldHaveSingleItem().Ip.ShouldBe("10.0.10.9");
 	}
 }

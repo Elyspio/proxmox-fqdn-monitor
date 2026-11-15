@@ -1,6 +1,7 @@
 using System.Xml.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using ProxmoxIpMonitor.Adapters.MongoDB.Protection;
+using Shouldly;
 using Xunit;
 
 namespace ProxmoxIpMonitor.Adapters.Tests;
@@ -17,7 +18,7 @@ public class DataProtectionTests
 	{
 		var parsed = DataProtectionMasterKey.Parse(Key());
 
-		Assert.Equal(32, parsed.Key.Length);
+		parsed.Key.Length.ShouldBe(32);
 	}
 
 	[Theory]
@@ -28,15 +29,15 @@ public class DataProtectionTests
 	{
 		// Silently generating a key would make every stored token unreadable after a restart,
 		// with no signal that anything went wrong.
-		var error = Assert.Throws<InvalidOperationException>(() => DataProtectionMasterKey.Parse(configured));
+		var error = Should.Throw<InvalidOperationException>(() => DataProtectionMasterKey.Parse(configured));
 
-		Assert.Contains("DataProtection:MasterKey", error.Message);
+		error.Message.ShouldContain("DataProtection:MasterKey");
 	}
 
 	[Fact]
 	public void ANonBase64KeyIsRejected()
 	{
-		Assert.Throws<InvalidOperationException>(() => DataProtectionMasterKey.Parse("not base64 !!"));
+		Should.Throw<InvalidOperationException>(() => DataProtectionMasterKey.Parse("not base64 !!"));
 	}
 
 	[Fact]
@@ -44,9 +45,9 @@ public class DataProtectionTests
 	{
 		var tooShort = Convert.ToBase64String(new byte[16]);
 
-		var error = Assert.Throws<InvalidOperationException>(() => DataProtectionMasterKey.Parse(tooShort));
+		var error = Should.Throw<InvalidOperationException>(() => DataProtectionMasterKey.Parse(tooShort));
 
-		Assert.Contains("32 bytes", error.Message);
+		error.Message.ShouldContain("32 bytes");
 	}
 
 	[Fact]
@@ -60,7 +61,7 @@ public class DataProtectionTests
 		var encrypted = new AesGcmXmlEncryptor(masterKey).Encrypt(plaintext);
 		var decrypted = new AesGcmXmlDecryptor(services).Decrypt(encrypted.EncryptedElement);
 
-		Assert.Equal(plaintext.ToString(), decrypted.ToString());
+		decrypted.ToString().ShouldBe(plaintext.ToString());
 	}
 
 	[Fact]
@@ -70,7 +71,7 @@ public class DataProtectionTests
 
 		var encrypted = new AesGcmXmlEncryptor(masterKey).Encrypt(new XElement("key", "s3cr3t-token"));
 
-		Assert.DoesNotContain("s3cr3t-token", encrypted.EncryptedElement.ToString());
+		encrypted.EncryptedElement.ToString().ShouldNotContain("s3cr3t-token");
 	}
 
 	[Fact]
@@ -81,9 +82,9 @@ public class DataProtectionTests
 		var otherKey = DataProtectionMasterKey.Parse(Key());
 		var services = new ServiceCollection().AddSingleton(otherKey).BuildServiceProvider();
 
-		var error = Assert.Throws<InvalidOperationException>(() => new AesGcmXmlDecryptor(services).Decrypt(encrypted.EncryptedElement));
+		var error = Should.Throw<InvalidOperationException>(() => new AesGcmXmlDecryptor(services).Decrypt(encrypted.EncryptedElement));
 
-		Assert.Contains("does not match", error.Message);
+		error.Message.ShouldContain("does not match");
 	}
 
 	[Fact]
@@ -99,6 +100,6 @@ public class DataProtectionTests
 		payload[^1] ^= 0xFF;
 		element.Element("value")!.Value = Convert.ToBase64String(payload);
 
-		Assert.Throws<InvalidOperationException>(() => new AesGcmXmlDecryptor(services).Decrypt(element));
+		Should.Throw<InvalidOperationException>(() => new AesGcmXmlDecryptor(services).Decrypt(element));
 	}
 }

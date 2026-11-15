@@ -1,7 +1,15 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { http } from "./client";
 import { qk } from "./queries";
-import type { DnsPush, MonitoredHost, NodeDto, NodeWriteDto, SettingsDto, SettingsWriteDto, TestResult } from "./types";
+import type {
+	DnsPush,
+	MonitoredHost,
+	NodeDto,
+	NodeWriteDto,
+	SettingsDto,
+	SettingsWriteDto,
+	TestResult,
+} from "./types";
 
 /** Forcing a collection changes the snapshot, the history, the health and the DNS diff. */
 export function useCollectNow() {
@@ -32,7 +40,8 @@ export function usePatchHost() {
 	const qc = useQueryClient();
 	return useMutation({
 		mutationFn: async (input: { key: string; pinned?: boolean; excluded?: boolean }) =>
-			(await http.patch<MonitoredHost>(`/api/hosts/${encodeURIComponent(input.key)}`, input)).data,
+			(await http.patch<MonitoredHost>(`/api/hosts/${encodeURIComponent(input.key)}`, input))
+				.data,
 		onSuccess: () => {
 			void qc.invalidateQueries({ queryKey: qk.hosts });
 			// Excluding a host changes what the zone should hold.
@@ -44,7 +53,8 @@ export function usePatchHost() {
 export function useSaveSettings() {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: async (body: SettingsWriteDto) => (await http.put<SettingsDto>("/api/settings", body)).data,
+		mutationFn: async (body: SettingsWriteDto) =>
+			(await http.put<SettingsDto>("/api/settings", body)).data,
 		onSuccess: () => {
 			void qc.invalidateQueries({ queryKey: qk.settings });
 			void qc.invalidateQueries({ queryKey: qk.dnsState });
@@ -55,7 +65,8 @@ export function useSaveSettings() {
 export function useCreateNode() {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: async (body: NodeWriteDto) => (await http.post<NodeDto>("/api/nodes", body)).data,
+		mutationFn: async (body: NodeWriteDto) =>
+			(await http.post<NodeDto>("/api/nodes", body)).data,
 		onSuccess: () => void qc.invalidateQueries({ queryKey: qk.nodes }),
 	});
 }
@@ -86,6 +97,10 @@ export function useDeleteNode() {
 export function useTestNode() {
 	return useMutation({
 		mutationFn: async (input: { id?: string; body: NodeWriteDto }) =>
-			(await http.post<TestResult>("/api/nodes/test", input.body, { params: { id: input.id } })).data,
+			(
+				await http.post<TestResult>("/api/nodes/test", input.body, {
+					params: { id: input.id },
+				})
+			).data,
 	});
 }

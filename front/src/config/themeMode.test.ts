@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { isThemeMode, readStoredMode, resolvePaletteMode } from "./themeMode";
 
 const storageWith = (value: string | null): Pick<Storage, "getItem"> => ({

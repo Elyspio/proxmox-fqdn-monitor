@@ -85,7 +85,14 @@ export function SubnetsEditor({
 			<Button startIcon={<AddIcon />} onClick={add} size="small" sx={{ mt: 1 }}>
 				Ajouter un sous-réseau
 			</Button>
-			<Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+			<Typography
+				variant="caption"
+				sx={{
+					color: "text.secondary",
+					display: "block",
+					mt: 1,
+				}}
+			>
 				Le CIDR sert à retenir l&apos;adresse d&apos;un hôte et à nommer son VLAN sur la
 				page Hôtes. Le nom est facultatif.
 			</Typography>

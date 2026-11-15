@@ -28,7 +28,7 @@ front/
 deploy/build/    Single-container image and deployment script
 ```
 
-Backend: .NET 10, ASP.NET Core, Aspire 13, MongoDB, xUnit v3.
+Backend: .NET 10, ASP.NET Core, Aspire 13, MongoDB, xUnit v3 (Microsoft.Testing.Platform) with Shouldly assertions.
 Frontend: React 19, TypeScript, Vite+, MUI 9, TanStack Query, Axios, `react-oidc-context`, Vitest.
 
 ## Invariants
@@ -100,13 +100,14 @@ These are the properties the design rests on. Changing them is a product decisio
 ```bash
 aspire run                                  # Mongo + Keycloak + API + Vite
 dotnet build back/ProxmoxIpMonitor.slnx
-dotnet test back/ProxmoxIpMonitor.slnx
+dotnet test --solution back/ProxmoxIpMonitor.slnx
 ```
 
 ```bash
 cd front
 pnpm install --frozen-lockfile
-pnpm check    # `vp check --fix` mutates files; review the diff
+pnpm check    # `vp check`: format, lint and type check (read-only)
+pnpm fmt      # `vp fmt` rewrites files; review the diff
 pnpm test
 pnpm build
 ```

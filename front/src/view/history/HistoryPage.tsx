@@ -104,8 +104,12 @@ export function HistoryPage() {
 								<TableCell>
 									<EventChip kind={event.kind} />
 								</TableCell>
-								<TableCell>{event.previousIp ? <Mono>{event.previousIp}</Mono> : "—"}</TableCell>
-								<TableCell>{event.currentIp ? <Mono>{event.currentIp}</Mono> : "—"}</TableCell>
+								<TableCell>
+									{event.previousIp ? <Mono>{event.previousIp}</Mono> : "—"}
+								</TableCell>
+								<TableCell>
+									{event.currentIp ? <Mono>{event.currentIp}</Mono> : "—"}
+								</TableCell>
 							</TableRow>
 						))}
 					</TableBody>
@@ -114,7 +118,12 @@ export function HistoryPage() {
 			</TableContainer>
 
 			<Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 2 }}>
-				<Typography variant="body2" color="text.secondary">
+				<Typography
+					variant="body2"
+					sx={{
+						color: "text.secondary",
+					}}
+				>
 					{data?.total ?? 0} événement(s)
 				</Typography>
 				<Button disabled={page === 0} onClick={() => setPage((value) => value - 1)}>

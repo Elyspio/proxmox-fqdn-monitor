@@ -30,6 +30,10 @@ export default defineConfig({
 		tabWidth: 4,
 	},
 	lint: {
+		options: {
+			typeAware: true,
+			typeCheck: true,
+		},
 		ignorePatterns: ["dist/**"],
 	},
 });
