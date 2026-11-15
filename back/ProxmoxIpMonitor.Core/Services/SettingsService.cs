@@ -1,7 +1,8 @@
+using Elyspio.Utils.Results;
+using Elyspio.Utils.Telemetry;
 using System.Net;
-using Elyspio.Utils.Telemetry.Tracing.Elements;
 using Microsoft.Extensions.Logging;
-using ProxmoxIpMonitor.Abstractions.Exceptions;
+using ProxmoxIpMonitor.Abstractions.Errors;
 using ProxmoxIpMonitor.Abstractions.Interfaces;
 using ProxmoxIpMonitor.Abstractions.Models;
 using ProxmoxIpMonitor.Abstractions.Transports;
@@ -11,19 +12,19 @@ namespace ProxmoxIpMonitor.Core.Services;
 public sealed class SettingsService(
 	ISettingsRepository settings,
 	ISecretProtector protector,
-	ILogger<SettingsService> logger) : TracingService(logger), ISettingsService
+	ILogger<SettingsService> logger) : ISettingsService
 {
 	public async Task<SettingsDto> GetAsync(CancellationToken ct = default)
 	{
-		using var trace = LogService();
+		using var trace = logger.Trace();
 
 		return SettingsDto.From(await settings.GetAsync(ct));
 	}
 
-	public async Task<SettingsDto> UpdateAsync(SettingsWriteDto body, CancellationToken ct = default)
+	public async Task<Result<SettingsDto>> UpdateAsync(SettingsWriteDto body, CancellationToken ct = default)
 	{
 		// The write DTO carries the raw Technitium token: nothing from it goes through Log.F.
-		using var trace = LogService();
+		using var trace = logger.Trace();
 
 		var current = await settings.GetAsync(ct);
 
@@ -37,7 +38,7 @@ public sealed class SettingsService(
 
 		foreach (var subnet in subnets)
 			if (!IsCidr(subnet.Cidr))
-				throw HttpException.BadRequest($"'{subnet.Cidr}' is not valid CIDR notation (expected something like 10.0.0.0/8).");
+				return trace.Fail(new RequestInvalid($"'{subnet.Cidr}' is not valid CIDR notation (expected something like 10.0.0.0/8)."));
 
 		// Same rule as node tokens: an empty field keeps the stored secret.
 		var apiToken = string.IsNullOrWhiteSpace(body.Technitium.ApiToken)
@@ -45,7 +46,7 @@ public sealed class SettingsService(
 			: protector.Protect(body.Technitium.ApiToken.Trim());
 
 		if (body.Technitium.Enabled && string.IsNullOrEmpty(apiToken))
-			throw HttpException.BadRequest("Technitium export cannot be enabled without an API token.");
+			return trace.Fail(new RequestInvalid("Technitium export cannot be enabled without an API token."));
 
 		var updated = await settings.SaveAsync(current with
 		{

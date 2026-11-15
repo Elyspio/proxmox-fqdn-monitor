@@ -1,5 +1,5 @@
-using Elyspio.Utils.Telemetry.Technical.Helpers;
-using Elyspio.Utils.Telemetry.Tracing.Elements;
+using Elyspio.Utils.Results.AspNetCore;
+using Elyspio.Utils.Telemetry;
 using Microsoft.AspNetCore.Mvc;
 using ProxmoxIpMonitor.Abstractions.Interfaces;
 using ProxmoxIpMonitor.Abstractions.Models;
@@ -9,30 +9,30 @@ namespace ProxmoxIpMonitor.Web.Controllers;
 
 [ApiController]
 [Route("api/hosts")]
-public sealed class HostsController(IHostService hosts, ILogger<HostsController> logger) : TracingController(logger)
+public sealed class HostsController(IHostService hosts, ILogger<HostsController> logger) : ControllerBase
 {
 	/// <summary>Current snapshot across every configured node.</summary>
 	[HttpGet]
 	public async Task<IReadOnlyList<MonitoredHost>> GetAll(CancellationToken ct)
 	{
-		using var trace = LogController();
+		using var trace = logger.Trace();
 
 		return await hosts.GetAllAsync(ct);
 	}
 
 	/// <summary>Toggles the per-host flags the collector honours: pinning and DNS exclusion.</summary>
 	[HttpPatch("{key}")]
-	public async Task<MonitoredHost> Patch(string key, [FromBody] HostPatchDto patch, CancellationToken ct)
+	public async Task<ActionResult<MonitoredHost>> Patch(string key, [FromBody] HostPatchDto patch, CancellationToken ct)
 	{
-		using var trace = LogController($"{Log.F(key)} {Log.F(patch)}");
+		using var trace = logger.Trace($"{Log.F(key)} {Log.F(patch)}");
 
-		return await hosts.PatchAsync(key, patch, ct);
+		return (await hosts.PatchAsync(key, patch, ct)).ToActionResult();
 	}
 }
 
 [ApiController]
 [Route("api/events")]
-public sealed class EventsController(IHostService hosts, ILogger<EventsController> logger) : TracingController(logger)
+public sealed class EventsController(IHostService hosts, ILogger<EventsController> logger) : ControllerBase
 {
 	/// <summary>Address-change history, newest first.</summary>
 	[HttpGet]
@@ -43,7 +43,7 @@ public sealed class EventsController(IHostService hosts, ILogger<EventsControlle
 		[FromQuery] int take = 100,
 		CancellationToken ct = default)
 	{
-		using var trace = LogController($"{Log.F(hostKey)} {Log.F(kind)} {Log.F(skip)} {Log.F(take)}");
+		using var trace = logger.Trace($"{Log.F(hostKey)} {Log.F(kind)} {Log.F(skip)} {Log.F(take)}");
 
 		return await hosts.QueryEventsAsync(new IpEventQuery { HostKey = hostKey, Kind = kind, Skip = skip, Take = take }, ct);
 	}
@@ -51,13 +51,13 @@ public sealed class EventsController(IHostService hosts, ILogger<EventsControlle
 
 [ApiController]
 [Route("api/health")]
-public sealed class CollectionHealthController(IHostService hosts, ILogger<CollectionHealthController> logger) : TracingController(logger)
+public sealed class CollectionHealthController(IHostService hosts, ILogger<CollectionHealthController> logger) : ControllerBase
 {
 	/// <summary>Latest collection outcome per node — what the health screen reads.</summary>
 	[HttpGet("collection")]
 	public async Task<IReadOnlyList<CollectionRun>> GetLatest(CancellationToken ct)
 	{
-		using var trace = LogController();
+		using var trace = logger.Trace();
 
 		return await hosts.GetLatestRunsAsync(ct);
 	}
@@ -65,7 +65,7 @@ public sealed class CollectionHealthController(IHostService hosts, ILogger<Colle
 	[HttpGet("collection/{nodeId}")]
 	public async Task<IReadOnlyList<CollectionRun>> GetHistory(string nodeId, [FromQuery] int take = 20, CancellationToken ct = default)
 	{
-		using var trace = LogController($"{Log.F(nodeId)} {Log.F(take)}");
+		using var trace = logger.Trace($"{Log.F(nodeId)} {Log.F(take)}");
 
 		return await hosts.GetRunHistoryAsync(nodeId, take, ct);
 	}
@@ -73,13 +73,13 @@ public sealed class CollectionHealthController(IHostService hosts, ILogger<Colle
 
 [ApiController]
 [Route("api/collect")]
-public sealed class CollectController(ICollector collector, ILogger<CollectController> logger) : TracingController(logger)
+public sealed class CollectController(ICollector collector, ILogger<CollectController> logger) : ControllerBase
 {
 	/// <summary>Forces a collection cycle. Waits for any in-flight cycle rather than running beside it.</summary>
 	[HttpPost]
 	public async Task<IReadOnlyList<CollectionRun>> Collect(CancellationToken ct)
 	{
-		using var trace = LogController();
+		using var trace = logger.Trace();
 
 		return await collector.CollectNowAsync(ct);
 	}

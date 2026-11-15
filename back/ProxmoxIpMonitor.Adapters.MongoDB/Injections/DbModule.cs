@@ -1,3 +1,5 @@
+using Elyspio.Utils.Telemetry.MongoDB.Business;
+using Elyspio.Utils.Telemetry.MongoDB.Options;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.Extensions.Configuration;
@@ -22,7 +24,13 @@ public static class DbModule
 			? url.DatabaseName
 			: config["Mongo:Database"] ?? "proxmox-ip-monitor";
 
-		services.AddSingleton<IMongoClient>(_ => new MongoClient(connectionString));
+		services.AddSingleton<IMongoClient>(_ =>
+		{
+			var settings = MongoClientSettings.FromConnectionString(connectionString);
+			// No command text: node and settings writes carry the protected tokens, and the key ring its wrapped keys.
+			settings.ClusterConfigurator = cluster => cluster.Subscribe(new MongoDbActivityEventSubscriber(new MongoInstrumentationOptions { CaptureCommandText = false }));
+			return new MongoClient(settings);
+		});
 		services.AddSingleton(sp => sp.GetRequiredService<IMongoClient>().GetDatabase(databaseName));
 		services.AddSingleton<MongoContext>();
 

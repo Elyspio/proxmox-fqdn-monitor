@@ -1,7 +1,6 @@
+using Elyspio.Utils.Telemetry;
 using System.Net.Http.Headers;
 using System.Text.Json;
-using Elyspio.Utils.Telemetry.Technical.Helpers;
-using Elyspio.Utils.Telemetry.Tracing.Elements;
 using Microsoft.Extensions.Logging;
 using ProxmoxIpMonitor.Abstractions.Models;
 
@@ -12,13 +11,13 @@ namespace ProxmoxIpMonitor.Adapters.Dns.Technitium;
 ///     so tests can drive the decision-making through a fake HttpMessageHandler and assert on
 ///     the exact form-encoded payloads that reach the wire.
 /// </summary>
-internal sealed class TechnitiumApi(HttpClient httpClient, ILogger logger) : TracingAdapter(logger)
+internal sealed class TechnitiumApi(HttpClient httpClient, ILogger<TechnitiumDnsProvider> logger)
 {
 	/// <summary>Lists the zone's enabled A records, keyed by fully qualified domain name.</summary>
 	public async Task<IReadOnlyList<ExistingRecord>> ListARecordsAsync(TechnitiumSettings config, string apiToken, CancellationToken ct)
 	{
 		// The API token is a secret: it never goes through Log.F.
-		using var trace = LogAdapter($"{Log.F(config.Zone)}");
+		using var trace = logger.Trace($"{Log.F(config.Zone)}");
 
 		var baseUri = BuildBaseUri(config.BaseUrl);
 		var zone = Uri.EscapeDataString(config.Zone);
@@ -71,7 +70,7 @@ internal sealed class TechnitiumApi(HttpClient httpClient, ILogger logger) : Tra
 
 	public async Task AddOrUpdateAsync(TechnitiumSettings config, string apiToken, DesiredRecord record, string ownershipMarker, CancellationToken ct)
 	{
-		using var trace = LogAdapter($"{Log.F(record.Domain)} {Log.F(record.Ip)}");
+		using var trace = logger.Trace($"{Log.F(record.Domain)} {Log.F(record.Ip)}");
 
 		var payload = new Dictionary<string, string>
 		{
@@ -97,7 +96,7 @@ internal sealed class TechnitiumApi(HttpClient httpClient, ILogger logger) : Tra
 
 	public async Task DeleteAsync(TechnitiumSettings config, string apiToken, ExistingRecord record, CancellationToken ct)
 	{
-		using var trace = LogAdapter($"{Log.F(record.Domain)} {Log.F(record.Ip)}");
+		using var trace = logger.Trace($"{Log.F(record.Domain)} {Log.F(record.Ip)}");
 
 		var payload = new Dictionary<string, string>
 		{

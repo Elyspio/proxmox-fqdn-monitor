@@ -5,10 +5,11 @@ namespace ProxmoxIpMonitor.Abstractions.Technical;
 /// <summary>
 ///     Carries either a value or the failure that prevented producing it.
 ///     Kept from the original exporter: collection must degrade per host rather than throw.
+///     Business errors of the API use the Result of Elyspio.Utils.Results instead.
 /// </summary>
-public class Result<T>
+public class Attempt<T>
 {
-	private Result(T? data, Exception? error = null)
+	private Attempt(T? data, Exception? error = null)
 	{
 		if (error is not null)
 		{
@@ -30,18 +31,18 @@ public class Result<T>
 
 	public Exception? Error { get; set; }
 
-	public static implicit operator Result<T>(T data)
+	public static implicit operator Attempt<T>(T data)
 	{
-		return new Result<T>(data);
+		return new Attempt<T>(data);
 	}
 
-	public static implicit operator Result<T>(Exception err)
+	public static implicit operator Attempt<T>(Exception err)
 	{
-		return new Result<T>(default, err);
+		return new Attempt<T>(default, err);
 	}
 
-	public static implicit operator T(Result<T> result)
+	public static implicit operator T(Attempt<T> result)
 	{
-		return !result.Success ? throw new InvalidOperationException("Cannot get Data from a failed Result.", result.Error) : result.Data!;
+		return !result.Success ? throw new InvalidOperationException("Cannot get Data from a failed Attempt.", result.Error) : result.Data!;
 	}
 }

@@ -12,7 +12,7 @@ ENV VITE_APP_VERSION=$APP_VERSION
 RUN pnpm run build
 
 # Build backend
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS builder-back
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS builder-back
 WORKDIR /src
 COPY global.json ./
 COPY back/ ./back/
@@ -20,7 +20,7 @@ RUN dotnet restore back/ProxmoxIpMonitor.Web/ProxmoxIpMonitor.Web.csproj
 RUN dotnet publish back/ProxmoxIpMonitor.Web/ProxmoxIpMonitor.Web.csproj -c Release -o /app/publish --no-restore
 
 # Runtime
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS production
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS production
 ENV TZ=Europe/Paris
 ENV ASPNETCORE_URLS=http://+:4000
 ENV ASPNETCORE_ENVIRONMENT=Production

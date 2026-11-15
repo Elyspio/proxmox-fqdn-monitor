@@ -39,8 +39,8 @@ public interface IPveClient
 	///     Guest-level failures surface as <see cref="DiscoveredHost.Issue" /> rather than exceptions;
 	///     only node-level failures (unreachable, bad token, TLS refused) produce a failed result.
 	/// </summary>
-	Task<Result<NodeSnapshot>> CollectAsync(PveNode node, IReadOnlyList<string> subnets, CancellationToken ct = default);
+	Task<Attempt<NodeSnapshot>> CollectAsync(PveNode node, IReadOnlyList<string> subnets, CancellationToken ct = default);
 
 	/// <summary>Verifies credentials and TLS reachability before a node is saved.</summary>
-	Task<Result<string>> TestAsync(PveNode node, CancellationToken ct = default);
+	Task<Attempt<string>> TestAsync(PveNode node, CancellationToken ct = default);
 }

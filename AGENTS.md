@@ -13,7 +13,7 @@ running on the hypervisors, and no SSH anywhere.
 
 ```text
 back/
-  ProxmoxIpMonitor.Abstractions/     Models, ports, SubnetFilter, Result<T>. Depends on nothing.
+  ProxmoxIpMonitor.Abstractions/     Models, ports, SubnetFilter, errors, Attempt<T>.
   ProxmoxIpMonitor.Core/             Collector, SnapshotDiffer, DesiredRecordBuilder.
   ProxmoxIpMonitor.Adapters.Proxmox/ Only project that knows /api2/json and PVEAPIToken.
   ProxmoxIpMonitor.Adapters.Dns/     Technitium provider and its transport.
@@ -28,7 +28,7 @@ front/
 deploy/build/    Single-container image and deployment script
 ```
 
-Backend: .NET 10, ASP.NET Core, Aspire 13, MongoDB, xUnit v3 (Microsoft.Testing.Platform) with Shouldly assertions.
+Backend: .NET 11, ASP.NET Core, Aspire 13, MongoDB, xUnit v3 (Microsoft.Testing.Platform) with Shouldly assertions.
 Frontend: React 19, TypeScript, Vite+, MUI 9, TanStack Query, Axios, `react-oidc-context`, Vitest.
 
 ## Invariants
@@ -68,17 +68,15 @@ These are the properties the design rests on. Changing them is a product decisio
 
 ### Tracing
 
-- Every behavioural class inherits its `Elyspio.Utils.Telemetry` base: controllers →
-  `TracingController`, services → `TracingService`, adapters → `TracingAdapter`, repositories →
-  `TracingRepository`. Static classes and `BackgroundService` implementations are exempt.
-- Every public method opens `using var trace = LogX($"{Log.F(arg)}")` (`LogController`,
-  `LogService`, `LogAdapter`, `LogRepository`). Private helpers and pure mappings do not.
+- Every behavioural class (controller, service, adapter, repository) takes its `ILogger<T>` and every
+  public method opens `using var trace = logger.Trace($"{Log.F(arg)}")` (`Elyspio.Utils.Telemetry`).
+  Private helpers, pure mappings, static classes and `BackgroundService` implementations do not.
 - Never pass a secret — or a DTO that contains one (`NodeWriteDto`, `SettingsWriteDto`) —
   through `Log.F`. Log the safe fields (ids, display names) or nothing.
-- Telemetry is bootstrapped in `Web/Program.cs` via `AppOpenTelemetryBuilder` +
-  `UseSerilogWithTelemetry`; each product assembly is registered with `AddAssembly<T>` so its
-  TracingX sources are exported. There is no ServiceDefaults project; health checks, service
-  discovery and HTTP resilience live in `Web/Hosting/HostingModule.cs`.
+- Telemetry is bootstrapped in `Web/Program.cs` by `builder.AddElyspioTelemetry(...)` and configured
+  only by the standard `OTEL_*` variables (Aspire locally, the chart in the cluster). There is no
+  ServiceDefaults project; health checks, service discovery and HTTP resilience live in
+  `Web/Hosting/HostingModule.cs`.
 
 ### Secrets
 
