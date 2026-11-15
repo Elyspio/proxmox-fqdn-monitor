@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using ProxmoxIpMonitor.Abstractions.Exceptions;
+using ProxmoxIpMonitor.Abstractions.Errors;
 using ProxmoxIpMonitor.Abstractions.Interfaces;
 using ProxmoxIpMonitor.Abstractions.Models;
 using ProxmoxIpMonitor.Abstractions.Transports;
@@ -32,8 +32,7 @@ public class SettingsServiceTests
 	{
 		var (service, _) = Build();
 
-		var exception = await Should.ThrowAsync<HttpException>(() => service.UpdateAsync(Write(subnets: [new SubnetWriteDto { Cidr = "10.0.0.0" }]), TestContext.Current.CancellationToken));
-		exception.StatusCode.ShouldBe(System.Net.HttpStatusCode.BadRequest);
+		var exception = (await service.UpdateAsync(Write(subnets: [new SubnetWriteDto { Cidr = "10.0.0.0" }]), TestContext.Current.CancellationToken)).ShouldFail().ShouldBeOfType<RequestInvalid>();
 	}
 
 	[Fact]
@@ -41,13 +40,13 @@ public class SettingsServiceTests
 	{
 		var (service, repository) = Build();
 
-		var dto = await service.UpdateAsync(
+		var dto = (await service.UpdateAsync(
 			Write(subnets:
 			[
 				new SubnetWriteDto { Cidr = " 10.0.0.0/24 ", Label = " Services " },
 				new SubnetWriteDto { Cidr = "10.0.1.0/24", Label = "  " }
 			]),
-			TestContext.Current.CancellationToken);
+			TestContext.Current.CancellationToken)).ShouldSucceed();
 
 		var stored = repository.Stored.SubnetsFilter;
 		stored[0].Cidr.ShouldBe("10.0.0.0/24");
@@ -74,13 +73,13 @@ public class SettingsServiceTests
 		};
 		var (service, repository) = Build(stored);
 
-		var dto = await service.UpdateAsync(Write(new TechnitiumWriteDto
+		var dto = (await service.UpdateAsync(Write(new TechnitiumWriteDto
 		{
 			Enabled = true,
 			BaseUrl = "http://dns.example",
 			Zone = "lan.example",
 			RecordTtlSeconds = 300
-		}), TestContext.Current.CancellationToken);
+		}), TestContext.Current.CancellationToken)).ShouldSucceed();
 
 		dto.Technitium.HasApiToken.ShouldBeTrue();
 		repository.Stored.Technitium.ApiTokenProtected.ShouldBe("protected:original");
@@ -91,14 +90,14 @@ public class SettingsServiceTests
 	{
 		var (service, repository) = Build();
 
-		await service.UpdateAsync(Write(new TechnitiumWriteDto
+		(await service.UpdateAsync(Write(new TechnitiumWriteDto
 		{
 			Enabled = true,
 			BaseUrl = "http://dns.example",
 			ApiToken = "t0ken",
 			Zone = "lan.example",
 			RecordTtlSeconds = 300
-		}), TestContext.Current.CancellationToken);
+		}), TestContext.Current.CancellationToken)).ShouldSucceed();
 
 		repository.Stored.Technitium.ApiTokenProtected.ShouldBe("protected:t0ken");
 	}
@@ -108,14 +107,13 @@ public class SettingsServiceTests
 	{
 		var (service, _) = Build();
 
-		var exception = await Should.ThrowAsync<HttpException>(() => service.UpdateAsync(Write(new TechnitiumWriteDto
+		var exception = (await service.UpdateAsync(Write(new TechnitiumWriteDto
 			{
 				Enabled = true,
 				BaseUrl = "http://dns.example",
 				Zone = "lan.example",
 				RecordTtlSeconds = 300
-			}), TestContext.Current.CancellationToken));
-		exception.StatusCode.ShouldBe(System.Net.HttpStatusCode.BadRequest);
+			}), TestContext.Current.CancellationToken)).ShouldFail().ShouldBeOfType<RequestInvalid>();
 	}
 
 	private sealed class FakeSettingsRepository(AppSettings stored) : ISettingsRepository

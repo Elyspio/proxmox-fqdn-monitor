@@ -10,7 +10,6 @@ using ProxmoxIpMonitor.Adapters.Proxmox.Pve;
 using ProxmoxIpMonitor.Core.Injections;
 using ProxmoxIpMonitor.Core.Services;
 using ProxmoxIpMonitor.Web.Auth;
-using ProxmoxIpMonitor.Web.Filters;
 using ProxmoxIpMonitor.Web.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -33,7 +32,7 @@ builder.Services.AddCore();
 builder.Services.AddAppAuth(builder.Configuration);
 
 // Enums as names, not integers: the frontend compares against "Vm", "Changed", "Failed".
-builder.Services.AddControllers(options => options.Filters.Add<HttpExceptionFilter>())
+builder.Services.AddControllers()
 	.AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 builder.Services.AddEndpointsApiExplorer();

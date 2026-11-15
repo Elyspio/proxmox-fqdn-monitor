@@ -1,6 +1,7 @@
+using Elyspio.Utils.Results;
 using Elyspio.Utils.Telemetry;
 using Microsoft.Extensions.Logging;
-using ProxmoxIpMonitor.Abstractions.Exceptions;
+using ProxmoxIpMonitor.Abstractions.Errors;
 using ProxmoxIpMonitor.Abstractions.Interfaces;
 using ProxmoxIpMonitor.Abstractions.Models;
 using ProxmoxIpMonitor.Abstractions.Transports;
@@ -20,11 +21,12 @@ public sealed class HostService(
 		return await hosts.GetAllAsync(ct);
 	}
 
-	public async Task<MonitoredHost> PatchAsync(string key, HostPatchDto patch, CancellationToken ct = default)
+	public async Task<Result<MonitoredHost>> PatchAsync(string key, HostPatchDto patch, CancellationToken ct = default)
 	{
 		using var trace = logger.Trace($"{Log.F(key)} {Log.F(patch)}");
 
-		var host = await hosts.GetAsync(key, ct) ?? throw HttpException.NotFound($"Unknown host '{key}'.");
+		var host = await hosts.GetAsync(key, ct);
+		if (host is null) return trace.Fail(new ResourceNotFound($"Unknown host '{key}'."));
 
 		var updated = host with
 		{

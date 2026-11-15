@@ -13,7 +13,7 @@ running on the hypervisors, and no SSH anywhere.
 
 ```text
 back/
-  ProxmoxIpMonitor.Abstractions/     Models, ports, SubnetFilter, Result<T>. Depends on nothing.
+  ProxmoxIpMonitor.Abstractions/     Models, ports, SubnetFilter, errors, Attempt<T>.
   ProxmoxIpMonitor.Core/             Collector, SnapshotDiffer, DesiredRecordBuilder.
   ProxmoxIpMonitor.Adapters.Proxmox/ Only project that knows /api2/json and PVEAPIToken.
   ProxmoxIpMonitor.Adapters.Dns/     Technitium provider and its transport.

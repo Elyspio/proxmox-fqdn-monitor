@@ -1,3 +1,4 @@
+using Elyspio.Utils.Results.AspNetCore;
 using Elyspio.Utils.Telemetry;
 using Microsoft.AspNetCore.Mvc;
 using ProxmoxIpMonitor.Abstractions.Interfaces;
@@ -21,11 +22,11 @@ public sealed class HostsController(IHostService hosts, ILogger<HostsController>
 
 	/// <summary>Toggles the per-host flags the collector honours: pinning and DNS exclusion.</summary>
 	[HttpPatch("{key}")]
-	public async Task<MonitoredHost> Patch(string key, [FromBody] HostPatchDto patch, CancellationToken ct)
+	public async Task<ActionResult<MonitoredHost>> Patch(string key, [FromBody] HostPatchDto patch, CancellationToken ct)
 	{
 		using var trace = logger.Trace($"{Log.F(key)} {Log.F(patch)}");
 
-		return await hosts.PatchAsync(key, patch, ct);
+		return (await hosts.PatchAsync(key, patch, ct)).ToActionResult();
 	}
 }
 

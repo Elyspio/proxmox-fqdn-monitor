@@ -1,6 +1,7 @@
+using Elyspio.Utils.Results;
 using Elyspio.Utils.Telemetry;
 using Microsoft.Extensions.Logging;
-using ProxmoxIpMonitor.Abstractions.Exceptions;
+using ProxmoxIpMonitor.Abstractions.Errors;
 using ProxmoxIpMonitor.Abstractions.Interfaces;
 using ProxmoxIpMonitor.Abstractions.Models;
 using ProxmoxIpMonitor.Abstractions.Transports;
@@ -22,13 +23,13 @@ public sealed class NodeService(
 		return stored.Select(NodeDto.From).ToList();
 	}
 
-	public async Task<NodeDto> CreateAsync(NodeWriteDto node, CancellationToken ct = default)
+	public async Task<Result<NodeDto>> CreateAsync(NodeWriteDto node, CancellationToken ct = default)
 	{
 		// The write DTO carries the raw token secret: only safe fields go through Log.F.
 		using var trace = logger.Trace($"{Log.F(node.DisplayName)}");
 
 		if (string.IsNullOrWhiteSpace(node.TokenSecret))
-			throw HttpException.BadRequest("A token secret is required when creating a node.");
+			return trace.Fail(new RequestInvalid("A token secret is required when creating a node."));
 
 		var created = await nodes.CreateAsync(new PveNode
 		{
@@ -44,11 +45,12 @@ public sealed class NodeService(
 		return NodeDto.From(created);
 	}
 
-	public async Task<NodeDto> UpdateAsync(string id, NodeWriteDto node, CancellationToken ct = default)
+	public async Task<Result<NodeDto>> UpdateAsync(string id, NodeWriteDto node, CancellationToken ct = default)
 	{
 		using var trace = logger.Trace($"{Log.F(id)} {Log.F(node.DisplayName)}");
 
-		var existing = await nodes.GetAsync(id, ct) ?? throw HttpException.NotFound($"Unknown node '{id}'.");
+		var existing = await nodes.GetAsync(id, ct);
+		if (existing is null) return trace.Fail(new ResourceNotFound($"Unknown node '{id}'."));
 
 		// An empty secret means "unchanged": the UI never receives the stored value, so it
 		// cannot echo it back, and blanking the field must not wipe the credential.
@@ -70,19 +72,21 @@ public sealed class NodeService(
 		return NodeDto.From(updated);
 	}
 
-	public async Task DeleteAsync(string id, CancellationToken ct = default)
+	public async Task<Result<Unit>> DeleteAsync(string id, CancellationToken ct = default)
 	{
 		using var trace = logger.Trace($"{Log.F(id)}");
 
-		_ = await nodes.GetAsync(id, ct) ?? throw HttpException.NotFound($"Unknown node '{id}'.");
+		if (await nodes.GetAsync(id, ct) is null) return trace.Fail(new ResourceNotFound($"Unknown node '{id}'."));
 
 		// Drop the node's hosts with it, otherwise they linger in the snapshot with no
 		// collector able to refresh or expire them.
 		await hosts.DeleteByNodeAsync(id, ct);
 		await nodes.DeleteAsync(id, ct);
+
+		return Unit.Value;
 	}
 
-	public async Task<NodeTestResultDto> TestAsync(NodeWriteDto node, string? id, CancellationToken ct = default)
+	public async Task<Result<NodeTestResultDto>> TestAsync(NodeWriteDto node, string? id, CancellationToken ct = default)
 	{
 		using var trace = logger.Trace($"{Log.F(id)} {Log.F(node.DisplayName)}");
 
@@ -95,9 +99,10 @@ public sealed class NodeService(
 		else
 		{
 			if (string.IsNullOrWhiteSpace(id))
-				throw HttpException.BadRequest("A token secret is required to test a node that has not been saved yet.");
+				return trace.Fail(new RequestInvalid("A token secret is required to test a node that has not been saved yet."));
 
-			var existing = await nodes.GetAsync(id, ct) ?? throw HttpException.NotFound($"Unknown node '{id}'.");
+			var existing = await nodes.GetAsync(id, ct);
+			if (existing is null) return trace.Fail(new ResourceNotFound($"Unknown node '{id}'."));
 			protectedSecret = existing.TokenSecretProtected;
 		}
 

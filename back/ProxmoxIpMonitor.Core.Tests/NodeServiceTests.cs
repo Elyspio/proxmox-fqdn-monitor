@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using ProxmoxIpMonitor.Abstractions.Exceptions;
+using ProxmoxIpMonitor.Abstractions.Errors;
 using ProxmoxIpMonitor.Abstractions.Interfaces;
 using ProxmoxIpMonitor.Abstractions.Models;
 using ProxmoxIpMonitor.Abstractions.Technical;
@@ -39,8 +39,7 @@ public class NodeServiceTests
 	{
 		var (service, _, _, _) = Build();
 
-		var exception = await Should.ThrowAsync<HttpException>(() => service.CreateAsync(Write(), TestContext.Current.CancellationToken));
-		exception.StatusCode.ShouldBe(System.Net.HttpStatusCode.BadRequest);
+		var exception = (await service.CreateAsync(Write(), TestContext.Current.CancellationToken)).ShouldFail().ShouldBeOfType<RequestInvalid>();
 	}
 
 	[Fact]
@@ -48,7 +47,7 @@ public class NodeServiceTests
 	{
 		var (service, nodes, _, _) = Build();
 
-		var dto = await service.CreateAsync(Write("s3cret"), TestContext.Current.CancellationToken);
+		var dto = (await service.CreateAsync(Write("s3cret"), TestContext.Current.CancellationToken)).ShouldSucceed();
 
 		dto.HasToken.ShouldBeTrue();
 		nodes.Stored.Single().TokenSecretProtected.ShouldBe("protected:s3cret");
@@ -68,7 +67,7 @@ public class NodeServiceTests
 			Enabled = true
 		});
 
-		var dto = await service.UpdateAsync("n1", Write(), TestContext.Current.CancellationToken);
+		var dto = (await service.UpdateAsync("n1", Write(), TestContext.Current.CancellationToken)).ShouldSucceed();
 
 		dto.HasToken.ShouldBeTrue();
 		nodes.Stored.Single().TokenSecretProtected.ShouldBe("protected:original");
@@ -88,7 +87,7 @@ public class NodeServiceTests
 			Enabled = true
 		});
 
-		await service.DeleteAsync("n1", TestContext.Current.CancellationToken);
+		(await service.DeleteAsync("n1", TestContext.Current.CancellationToken)).ShouldSucceed();
 
 		nodes.Stored.ShouldBeEmpty();
 		hosts.DeletedNodeIds.ShouldBe(["n1"]);
@@ -99,8 +98,7 @@ public class NodeServiceTests
 	{
 		var (service, _, _, _) = Build();
 
-		var exception = await Should.ThrowAsync<HttpException>(() => service.TestAsync(Write(), null, TestContext.Current.CancellationToken));
-		exception.StatusCode.ShouldBe(System.Net.HttpStatusCode.BadRequest);
+		var exception = (await service.TestAsync(Write(), null, TestContext.Current.CancellationToken)).ShouldFail().ShouldBeOfType<RequestInvalid>();
 	}
 
 	[Fact]
@@ -108,7 +106,7 @@ public class NodeServiceTests
 	{
 		var (service, _, _, pve) = Build();
 
-		var result = await service.TestAsync(Write("s3cret"), null, TestContext.Current.CancellationToken);
+		var result = (await service.TestAsync(Write("s3cret"), null, TestContext.Current.CancellationToken)).ShouldSucceed();
 
 		result.Success.ShouldBeTrue();
 		pve.LastTested!.Id.ShouldStartWith("test-");
@@ -184,15 +182,15 @@ public class NodeServiceTests
 	{
 		public PveNode? LastTested { get; private set; }
 
-		public Task<Result<NodeSnapshot>> CollectAsync(PveNode node, IReadOnlyList<string> subnets, CancellationToken ct = default)
+		public Task<Attempt<NodeSnapshot>> CollectAsync(PveNode node, IReadOnlyList<string> subnets, CancellationToken ct = default)
 		{
-			return Task.FromResult<Result<NodeSnapshot>>(new NodeSnapshot { Hosts = [] });
+			return Task.FromResult<Attempt<NodeSnapshot>>(new NodeSnapshot { Hosts = [] });
 		}
 
-		public Task<Result<string>> TestAsync(PveNode node, CancellationToken ct = default)
+		public Task<Attempt<string>> TestAsync(PveNode node, CancellationToken ct = default)
 		{
 			LastTested = node;
-			return Task.FromResult<Result<string>>("ok");
+			return Task.FromResult<Attempt<string>>("ok");
 		}
 	}
 }

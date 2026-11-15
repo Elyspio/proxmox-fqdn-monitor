@@ -1,3 +1,4 @@
+using Elyspio.Utils.Results.AspNetCore;
 using Elyspio.Utils.Telemetry;
 using Microsoft.AspNetCore.Mvc;
 using ProxmoxIpMonitor.Abstractions.Interfaces;
@@ -18,11 +19,11 @@ public sealed class SettingsController(ISettingsService settings, ILogger<Settin
 	}
 
 	[HttpPut]
-	public async Task<SettingsDto> Update([FromBody] SettingsWriteDto body, CancellationToken ct)
+	public async Task<ActionResult<SettingsDto>> Update([FromBody] SettingsWriteDto body, CancellationToken ct)
 	{
 		// The body carries the raw Technitium token: nothing from it goes through Log.F.
 		using var trace = logger.Trace();
 
-		return await settings.UpdateAsync(body, ct);
+		return (await settings.UpdateAsync(body, ct)).ToActionResult();
 	}
 }
