@@ -1,5 +1,4 @@
-using Elyspio.Utils.Telemetry.Technical.Helpers;
-using Elyspio.Utils.Telemetry.Tracing.Elements;
+using Elyspio.Utils.Telemetry;
 using Microsoft.Extensions.Logging;
 using ProxmoxIpMonitor.Abstractions.Exceptions;
 using ProxmoxIpMonitor.Abstractions.Interfaces;
@@ -13,11 +12,11 @@ public sealed class NodeService(
 	IHostRepository hosts,
 	IPveClient pveClient,
 	ISecretProtector protector,
-	ILogger<NodeService> logger) : TracingService(logger), INodeService
+	ILogger<NodeService> logger) : INodeService
 {
 	public async Task<IReadOnlyList<NodeDto>> GetAllAsync(CancellationToken ct = default)
 	{
-		using var trace = LogService();
+		using var trace = logger.Trace();
 
 		var stored = await nodes.GetAllAsync(ct);
 		return stored.Select(NodeDto.From).ToList();
@@ -26,7 +25,7 @@ public sealed class NodeService(
 	public async Task<NodeDto> CreateAsync(NodeWriteDto node, CancellationToken ct = default)
 	{
 		// The write DTO carries the raw token secret: only safe fields go through Log.F.
-		using var trace = LogService($"{Log.F(node.DisplayName)}");
+		using var trace = logger.Trace($"{Log.F(node.DisplayName)}");
 
 		if (string.IsNullOrWhiteSpace(node.TokenSecret))
 			throw HttpException.BadRequest("A token secret is required when creating a node.");
@@ -47,7 +46,7 @@ public sealed class NodeService(
 
 	public async Task<NodeDto> UpdateAsync(string id, NodeWriteDto node, CancellationToken ct = default)
 	{
-		using var trace = LogService($"{Log.F(id)} {Log.F(node.DisplayName)}");
+		using var trace = logger.Trace($"{Log.F(id)} {Log.F(node.DisplayName)}");
 
 		var existing = await nodes.GetAsync(id, ct) ?? throw HttpException.NotFound($"Unknown node '{id}'.");
 
@@ -73,7 +72,7 @@ public sealed class NodeService(
 
 	public async Task DeleteAsync(string id, CancellationToken ct = default)
 	{
-		using var trace = LogService($"{Log.F(id)}");
+		using var trace = logger.Trace($"{Log.F(id)}");
 
 		_ = await nodes.GetAsync(id, ct) ?? throw HttpException.NotFound($"Unknown node '{id}'.");
 
@@ -85,7 +84,7 @@ public sealed class NodeService(
 
 	public async Task<NodeTestResultDto> TestAsync(NodeWriteDto node, string? id, CancellationToken ct = default)
 	{
-		using var trace = LogService($"{Log.F(id)} {Log.F(node.DisplayName)}");
+		using var trace = logger.Trace($"{Log.F(id)} {Log.F(node.DisplayName)}");
 
 		string protectedSecret;
 

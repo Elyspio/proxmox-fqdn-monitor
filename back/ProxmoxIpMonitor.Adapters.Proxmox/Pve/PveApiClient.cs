@@ -1,9 +1,8 @@
+using Elyspio.Utils.Telemetry;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Elyspio.Utils.Telemetry.Technical.Helpers;
-using Elyspio.Utils.Telemetry.Tracing.Elements;
 using Microsoft.Extensions.Logging;
 using ProxmoxIpMonitor.Abstractions;
 using ProxmoxIpMonitor.Abstractions.Interfaces;
@@ -23,7 +22,7 @@ namespace ProxmoxIpMonitor.Adapters.Proxmox.Pve;
 public sealed class PveApiClient(
 	IPveHttpClientProvider clients,
 	ISecretProtector protector,
-	ILogger<PveApiClient> logger) : TracingAdapter(logger), IPveClient
+	ILogger<PveApiClient> logger) : IPveClient
 {
 	/// <summary>Proxmox reports running guests with this exact status string.</summary>
 	private const string RunningStatus = "running";
@@ -33,7 +32,7 @@ public sealed class PveApiClient(
 	/// <inheritdoc />
 	public async Task<Result<NodeSnapshot>> CollectAsync(PveNode node, IReadOnlyList<string> subnets, CancellationToken ct = default)
 	{
-		using var trace = LogAdapter($"{Log.F(node.DisplayName)} {Log.F(subnets)}");
+		using var trace = logger.Trace($"{Log.F(node.DisplayName)} {Log.F(subnets)}");
 
 		HttpClient client;
 		AuthenticationHeaderValue auth;
@@ -86,7 +85,7 @@ public sealed class PveApiClient(
 	/// <inheritdoc />
 	public async Task<Result<string>> TestAsync(PveNode node, CancellationToken ct = default)
 	{
-		using var trace = LogAdapter($"{Log.F(node.DisplayName)}");
+		using var trace = logger.Trace($"{Log.F(node.DisplayName)}");
 
 		try
 		{

@@ -1,5 +1,4 @@
-using Elyspio.Utils.Telemetry.Technical.Helpers;
-using Elyspio.Utils.Telemetry.Tracing.Elements;
+using Elyspio.Utils.Telemetry;
 using Microsoft.AspNetCore.Mvc;
 using ProxmoxIpMonitor.Abstractions.Interfaces;
 using ProxmoxIpMonitor.Abstractions.Models;
@@ -8,7 +7,7 @@ namespace ProxmoxIpMonitor.Web.Controllers;
 
 [ApiController]
 [Route("api/dns")]
-public sealed class DnsController(IDnsService dns, ILogger<DnsController> logger) : TracingController(logger)
+public sealed class DnsController(IDnsService dns, ILogger<DnsController> logger) : ControllerBase
 {
 	/// <summary>
 	///     Diff between the desired records and the live zone. Read-only: it never writes,
@@ -17,7 +16,7 @@ public sealed class DnsController(IDnsService dns, ILogger<DnsController> logger
 	[HttpGet("state")]
 	public async Task<IReadOnlyList<DnsState>> GetState(CancellationToken ct)
 	{
-		using var trace = LogController();
+		using var trace = logger.Trace();
 
 		return await dns.GetStateAsync(ct);
 	}
@@ -29,7 +28,7 @@ public sealed class DnsController(IDnsService dns, ILogger<DnsController> logger
 	[HttpPost("push")]
 	public async Task<IReadOnlyList<DnsPush>> Push(CancellationToken ct)
 	{
-		using var trace = LogController();
+		using var trace = logger.Trace();
 
 		return await dns.PushAsync(ct);
 	}
@@ -37,7 +36,7 @@ public sealed class DnsController(IDnsService dns, ILogger<DnsController> logger
 	[HttpGet("pushes")]
 	public async Task<IReadOnlyList<DnsPush>> GetPushes([FromQuery] int take = 20, CancellationToken ct = default)
 	{
-		using var trace = LogController($"{Log.F(take)}");
+		using var trace = logger.Trace($"{Log.F(take)}");
 
 		return await dns.GetRecentPushesAsync(take, ct);
 	}

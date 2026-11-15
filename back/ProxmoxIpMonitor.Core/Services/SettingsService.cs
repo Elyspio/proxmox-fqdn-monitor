@@ -1,5 +1,5 @@
+using Elyspio.Utils.Telemetry;
 using System.Net;
-using Elyspio.Utils.Telemetry.Tracing.Elements;
 using Microsoft.Extensions.Logging;
 using ProxmoxIpMonitor.Abstractions.Exceptions;
 using ProxmoxIpMonitor.Abstractions.Interfaces;
@@ -11,11 +11,11 @@ namespace ProxmoxIpMonitor.Core.Services;
 public sealed class SettingsService(
 	ISettingsRepository settings,
 	ISecretProtector protector,
-	ILogger<SettingsService> logger) : TracingService(logger), ISettingsService
+	ILogger<SettingsService> logger) : ISettingsService
 {
 	public async Task<SettingsDto> GetAsync(CancellationToken ct = default)
 	{
-		using var trace = LogService();
+		using var trace = logger.Trace();
 
 		return SettingsDto.From(await settings.GetAsync(ct));
 	}
@@ -23,7 +23,7 @@ public sealed class SettingsService(
 	public async Task<SettingsDto> UpdateAsync(SettingsWriteDto body, CancellationToken ct = default)
 	{
 		// The write DTO carries the raw Technitium token: nothing from it goes through Log.F.
-		using var trace = LogService();
+		using var trace = logger.Trace();
 
 		var current = await settings.GetAsync(ct);
 

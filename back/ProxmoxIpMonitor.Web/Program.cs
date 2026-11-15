@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
-using Elyspio.Utils.Telemetry.Technical.Extensions;
-using Elyspio.Utils.Telemetry.Tracing.Builder;
+using Elyspio.Utils.Telemetry;
+using Elyspio.Utils.Telemetry.MongoDB.Extensions;
 using ProxmoxIpMonitor.Adapters.Dns.Injections;
 using ProxmoxIpMonitor.Adapters.Dns.Technitium;
 using ProxmoxIpMonitor.Adapters.MongoDB.Injections;
@@ -19,21 +19,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("appsettings.docker.json", true, true);
 builder.Configuration.AddJsonFile("appsettings.Local.json", true, true);
 
-builder.Host.UseSerilogWithTelemetry();
-
-// Telemetry is owned by Elyspio.Utils.Telemetry: it registers every TracingX activity source
-// found in the product assemblies. Under Aspire, OTEL_EXPORTER_OTLP_ENDPOINT takes precedence
-// over OpenTelemetry:CollectorUri, so the same build works locally and in the cluster.
-if (builder.Configuration.IsTelemetryEnabled(out var telemetryOptions))
-{
-	var telemetry = new AppOpenTelemetryBuilder<Program>(telemetryOptions!, builder.Configuration);
-	telemetry.AddAssembly<Collector>();
-	telemetry.AddAssembly<PveApiClient>();
-	telemetry.AddAssembly<TechnitiumDnsProvider>();
-	telemetry.AddAssembly<NodeRepository>();
-	telemetry.Build(builder.Services);
-	builder.Services.AddOpenTelemetryJsonConfiguration(builder.Configuration);
-}
+// Telemetry is owned by Elyspio.Utils.Telemetry: Serilog on the console, plus traces, metrics and logs over OTLP
+// when OTEL_EXPORTER_OTLP_ENDPOINT is set (Aspire locally, the chart in the cluster), so the same build works in both.
+builder.AddElyspioTelemetry(options => options.Tracing = tracing => tracing.AddAppMongoInstrumentation());
 
 builder.AddHostingDefaults();
 
@@ -59,8 +47,6 @@ builder.Services.AddCors(options => options.AddPolicy(corsPolicy, policy =>
 	policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 
 var app = builder.Build();
-
-app.UseOpenTelemetryJsonConfiguration();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
